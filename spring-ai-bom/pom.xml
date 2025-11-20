@@ -21,7 +21,7 @@
 
 	<groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-bom</artifactId>
-	<version>1.1.0</version>
+	<version>1.1.0-HYPERPAAS-SNAPSHOT</version>
 
     <packaging>pom</packaging>
 
@@ -51,8 +51,9 @@
 	</ciManagement>
 	<distributionManagement>
 		<snapshotRepository>
-			<id>spring-snapshots</id>
-			<url>https://repo.spring.io/libs-snapshot-local</url>
+			<id>hyperpaas_snapshot</id>
+			<name>hyperpaas_snapshot</name>
+			<url>https://nexus.hyperpaas-inc.com/repository/maven-snapshots</url>
 			<releases>
 				<enabled>false</enabled>
 			</releases>

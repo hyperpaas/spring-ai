@@ -13,7 +13,7 @@ Spring AI provides separate starters for Google GenAI functionality:
 <dependency>
     <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-starter-model-google-genai</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0-HYPERPAAS-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -22,7 +22,7 @@ Spring AI provides separate starters for Google GenAI functionality:
 <dependency>
     <groupId>org.springframework.ai</groupId>
     <artifactId>spring-ai-starter-model-google-genai-embedding</artifactId>
-    <version>1.1.0-SNAPSHOT</version>
+    <version>1.1.0-HYPERPAAS-SNAPSHOT</version>
 </dependency>
 ```
 
