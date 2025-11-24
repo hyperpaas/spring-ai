@@ -17,7 +17,6 @@
 package org.springframework.ai.model.openai.autoconfigure;
 
 import org.springframework.ai.openai.OpenAiImageEditOptions;
-import org.springframework.ai.openai.OpenAiImageOptions;
 import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.NestedConfigurationProperty;

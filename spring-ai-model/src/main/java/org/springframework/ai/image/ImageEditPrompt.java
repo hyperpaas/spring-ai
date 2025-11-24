@@ -33,7 +33,7 @@ public class ImageEditPrompt implements ModelRequest<ImageEditMessage> {
 
 	@Override
 	public ImageEditMessage getInstructions() {
-		return message;
+		return this.message;
 	}
 
 	@Override
@@ -50,13 +50,13 @@ public class ImageEditPrompt implements ModelRequest<ImageEditMessage> {
 			return false;
 		}
 		ImageEditPrompt that = (ImageEditPrompt) o;
-		return Objects.equals(message, that.message)
-				&& Objects.equals(imageEditModelOptions, that.imageEditModelOptions);
+		return Objects.equals(this.message, that.message)
+				&& Objects.equals(this.imageEditModelOptions, that.imageEditModelOptions);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(message, imageEditModelOptions);
+		return Objects.hash(this.message, this.imageEditModelOptions);
 	}
 
 }

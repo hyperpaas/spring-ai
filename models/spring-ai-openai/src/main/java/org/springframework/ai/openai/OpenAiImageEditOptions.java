@@ -18,12 +18,11 @@ package org.springframework.ai.openai;
 
 import java.util.Objects;
 
-import org.springframework.ai.image.ImageEditOptions;
-import org.springframework.ai.image.ImageOptions;
-import org.springframework.core.io.Resource;
-
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
+import org.springframework.ai.image.ImageEditOptions;
+import org.springframework.core.io.Resource;
 
 /**
  * OpenAI Image Edit API options. OpenAiImageEditOptions.java

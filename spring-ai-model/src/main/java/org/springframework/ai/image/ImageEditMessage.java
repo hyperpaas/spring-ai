@@ -32,11 +32,11 @@ public class ImageEditMessage {
 	}
 
 	public List<Media> getImage() {
-		return image;
+		return this.image;
 	}
 
 	public String getPrompt() {
-		return prompt;
+		return this.prompt;
 	}
 
 }
