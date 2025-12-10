@@ -200,15 +200,15 @@ public class OpenAiImageApi {
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	public record OpenAiImageEditRequest(
-		@JsonProperty("image") List<Media> image,
-		@JsonProperty("prompt") String prompt,
-		@JsonProperty("model") String model,
-		@JsonProperty("mask") Media mask,
-		@JsonProperty("n") Integer n,
-		@JsonProperty("quality") String quality,
-		@JsonProperty("response_format") String responseFormat,
-		@JsonProperty("size") String size,
-		@JsonProperty("user") String user) {
+			@JsonProperty("image") List<Media> image,
+			@JsonProperty("prompt") String prompt,
+			@JsonProperty("model") String model,
+			@JsonProperty("mask") Media mask,
+			@JsonProperty("n") Integer n,
+			@JsonProperty("quality") String quality,
+			@JsonProperty("response_format") String responseFormat,
+			@JsonProperty("size") String size,
+			@JsonProperty("user") String user) {
 
 		public OpenAiImageEditRequest(List<Media> images, String prompt, String model) {
 			this(images, prompt, model, null, null, null, null, null, null);
@@ -217,7 +217,69 @@ public class OpenAiImageApi {
 		public OpenAiImageEditRequest(Media image, String prompt, String model) {
 			this(List.of(image), prompt, model);
 		}
+
+		public static class Builder {
+			private List<Media> image;
+			private String prompt;
+			private String model;
+			private Media mask;
+			private Integer n;
+			private String quality;
+			private String responseFormat;
+			private String size;
+			private String user;
+
+			public Builder image(List<Media> image) {
+				this.image = image;
+				return this;
+			}
+
+			public Builder prompt(String prompt) {
+				this.prompt = prompt;
+				return this;
+			}
+
+			public Builder model(String model) {
+				this.model = model;
+				return this;
+			}
+
+			public Builder mask(Media mask) {
+				this.mask = mask;
+				return this;
+			}
+
+			public Builder n(Integer n) {
+				this.n = n;
+				return this;
+			}
+
+			public Builder quality(String quality) {
+				this.quality = quality;
+				return this;
+			}
+
+			public Builder responseFormat(String responseFormat) {
+				this.responseFormat = responseFormat;
+				return this;
+			}
+
+			public Builder size(String size) {
+				this.size = size;
+				return this;
+			}
+
+			public Builder user(String user) {
+				this.user = user;
+				return this;
+			}
+
+			public OpenAiImageEditRequest build() {
+				return new OpenAiImageEditRequest(image, prompt, model, mask, n, quality, responseFormat, size, user);
+			}
+		}
 	}
+
 
 	@JsonInclude(JsonInclude.Include.NON_NULL)
 	@JsonIgnoreProperties(ignoreUnknown = true)

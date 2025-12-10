@@ -17,10 +17,8 @@
 package org.springframework.ai.openai;
 
 import java.util.List;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import org.springframework.ai.content.Media;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageEditModel;
@@ -110,9 +108,33 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		String prompt = imageEditPrompt.getInstructions().getPrompt();
 		OpenAiImageEditOptions imageOptions = (OpenAiImageEditOptions) imageEditPrompt.getOptions();
 
-		OpenAiImageEditRequest imageRequest = new OpenAiImageEditRequest(images, prompt, DEFAULT_IMAGE_EDIT_MODEL);
+		OpenAiImageEditRequest.Builder builder = new OpenAiImageEditRequest.Builder().image(images)
+			.prompt(prompt)
+			.model(DEFAULT_IMAGE_EDIT_MODEL);
 
-		return ModelOptionsUtils.merge(imageOptions, imageRequest, OpenAiImageEditRequest.class);
+		if (imageOptions.getMask() != null) {
+			builder.mask(Media.builder().data(imageOptions.getMask()).build());
+		}
+		if (imageOptions.getN() != null) {
+			builder.n(imageOptions.getN());
+		}
+		if (imageOptions.getQuality() != null) {
+			builder.quality(imageOptions.getQuality());
+		}
+		if (imageOptions.getResponseFormat() != null) {
+			builder.responseFormat(imageOptions.getResponseFormat());
+		}
+		if (imageOptions.getSize() != null) {
+			builder.size(imageOptions.getSize());
+		}
+		if (imageOptions.getUser() != null) {
+			builder.user(imageOptions.getUser());
+		}
+		if (imageOptions.getModel() != null) {
+			builder.model(imageOptions.getModel());
+		}
+
+		return builder.build();
 	}
 
 	private ImageResponse convertResponse(ResponseEntity<OpenAiImageResponse> imageResponseEntity,
