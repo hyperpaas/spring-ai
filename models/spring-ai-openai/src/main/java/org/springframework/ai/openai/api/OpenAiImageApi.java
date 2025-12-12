@@ -35,6 +35,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.util.Assert;
 import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MimeType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestClient;
@@ -104,22 +105,51 @@ public class OpenAiImageApi {
 
 		MultiValueMap<String, Object> multipartBody = new LinkedMultiValueMap<>();
 		openAiImageEditRequest.image().forEach(image -> {
+			String filename = image.getName();
+
+			if (filename == null) {
+				throw new IllegalArgumentException("Filename cannot be null.");
+			}
+
+			if (!filename.contains(".")) {
+				MimeType mimeType = image.getMimeType();
+				if (mimeType == null) {
+					throw new IllegalArgumentException(
+							"Media name must contain a suffix OR the mime type cannot be null.");
+				}
+				String extension = "." + mimeType.getSubtype();
+				filename = filename + extension;
+			}
+
+			final String finalFilename = filename;
 			Resource imageResource = new ByteArrayResource(image.getDataAsByteArray()) {
 				@Override
 				public String getFilename() {
-					return image.getName();
+					return finalFilename;
 				}
 			};
 			multipartBody.add("image[]", imageResource);
 		});
 
-		multipartBody.add("model", openAiImageEditRequest.model());
 		multipartBody.add("prompt", openAiImageEditRequest.prompt());
-		multipartBody.add("response_format", openAiImageEditRequest.responseFormat());
-		multipartBody.add("n", openAiImageEditRequest.n());
-		multipartBody.add("quality", openAiImageEditRequest.quality());
-		multipartBody.add("size", openAiImageEditRequest.size());
-		multipartBody.add("user", openAiImageEditRequest.user());
+		if (openAiImageEditRequest.model() != null) {
+			multipartBody.add("model", openAiImageEditRequest.model());
+		}
+		if (openAiImageEditRequest.responseFormat() != null) {
+			multipartBody.add("response_format", openAiImageEditRequest.responseFormat());
+		}
+		if (openAiImageEditRequest.n() != null) {
+			multipartBody.add("n", openAiImageEditRequest.n());
+		}
+		if (openAiImageEditRequest.quality() != null) {
+			multipartBody.add("quality", openAiImageEditRequest.quality());
+		}
+		if (openAiImageEditRequest.size() != null) {
+			multipartBody.add("size", openAiImageEditRequest.size());
+		}
+		if (openAiImageEditRequest.user() != null) {
+			multipartBody.add("user", openAiImageEditRequest.user());
+		}
 
 		Media mask = openAiImageEditRequest.mask();
 		if (mask != null) {
@@ -133,7 +163,7 @@ public class OpenAiImageApi {
 		}
 
 		return this.restClient.post()
-			.uri("v1/images/edits")
+			.uri(this.imagesPath)
 			.body(multipartBody)
 			.contentType(MediaType.MULTIPART_FORM_DATA)
 			.retrieve()
