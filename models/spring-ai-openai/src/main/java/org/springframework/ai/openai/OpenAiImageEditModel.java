@@ -133,9 +133,6 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		if (imageOptions.getModel() != null) {
 			builder.model(imageOptions.getModel());
 		}
-		if (imageOptions.getSize() != null) {
-			builder.size(imageOptions.getSize());
-		}
 
 		return builder.build();
 	}
@@ -178,6 +175,8 @@ public class OpenAiImageEditModel implements ImageEditModel {
 			// Handle OpenAI specific image options
 			.quality(ModelOptionsUtils.mergeOption(runtimeOptions.getQuality(), this.defaultOptions.getQuality()))
 			.user(ModelOptionsUtils.mergeOption(runtimeOptions.getUser(), this.defaultOptions.getUser()))
+			.width(ModelOptionsUtils.mergeOption(runtimeOptions.getWidth(), this.defaultOptions.getWidth()))
+			.height(ModelOptionsUtils.mergeOption(runtimeOptions.getHeight(), this.defaultOptions.getHeight()))
 			.build();
 
 		return new ImageEditPrompt(imageEditPrompt.getInstructions(), requestOptions);
