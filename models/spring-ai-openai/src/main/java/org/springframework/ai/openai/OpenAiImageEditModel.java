@@ -133,6 +133,9 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		if (imageOptions.getModel() != null) {
 			builder.model(imageOptions.getModel());
 		}
+		if (imageOptions.getSize() != null) {
+			builder.size(imageOptions.getSize());
+		}
 
 		return builder.build();
 	}
@@ -155,11 +158,12 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		return new ImageResponse(imageGenerationList, openAiImageResponseMetadata);
 	}
 
-	private ImageEditPrompt buildRequestImageEditPrompt(ImageEditPrompt ImageEditPrompt) {
+	private ImageEditPrompt buildRequestImageEditPrompt(ImageEditPrompt imageEditPrompt) {
 		// Process runtime options
 		OpenAiImageEditOptions runtimeOptions = null;
-		if (ImageEditPrompt.getOptions() != null) {
-			runtimeOptions = ModelOptionsUtils.copyToTarget(ImageEditPrompt.getOptions(), ImageEditOptions.class,
+		if (imageEditPrompt.getOptions() != null) {
+			runtimeOptions = ModelOptionsUtils.copyToTarget(
+					imageEditPrompt.getOptions(), ImageEditOptions.class,
 					OpenAiImageEditOptions.class);
 		}
 
@@ -176,7 +180,7 @@ public class OpenAiImageEditModel implements ImageEditModel {
 			.user(ModelOptionsUtils.mergeOption(runtimeOptions.getUser(), this.defaultOptions.getUser()))
 			.build();
 
-		return new ImageEditPrompt(ImageEditPrompt.getInstructions(), requestOptions);
+		return new ImageEditPrompt(imageEditPrompt.getInstructions(), requestOptions);
 	}
 
 }
