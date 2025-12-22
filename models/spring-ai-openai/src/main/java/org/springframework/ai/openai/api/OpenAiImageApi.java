@@ -305,7 +305,7 @@ public class OpenAiImageApi {
 			}
 
 			public OpenAiImageEditRequest build() {
-				return new OpenAiImageEditRequest(image, prompt, model, mask, n, quality, responseFormat, size, user);
+				return new OpenAiImageEditRequest(this.image, this.prompt, this.model, this.mask, this.n, this.quality, this.responseFormat, this.size, this.user);
 			}
 		}
 	}

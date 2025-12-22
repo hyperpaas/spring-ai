@@ -17,8 +17,10 @@
 package org.springframework.ai.openai;
 
 import java.util.List;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
 import org.springframework.ai.content.Media;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageEditModel;
@@ -159,8 +161,7 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		// Process runtime options
 		OpenAiImageEditOptions runtimeOptions = null;
 		if (imageEditPrompt.getOptions() != null) {
-			runtimeOptions = ModelOptionsUtils.copyToTarget(
-					imageEditPrompt.getOptions(), ImageEditOptions.class,
+			runtimeOptions = ModelOptionsUtils.copyToTarget(imageEditPrompt.getOptions(), ImageEditOptions.class,
 					OpenAiImageEditOptions.class);
 		}
 
