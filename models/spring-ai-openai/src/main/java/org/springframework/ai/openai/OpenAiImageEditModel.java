@@ -147,6 +147,11 @@ public class OpenAiImageEditModel implements ImageEditModel {
 			return new ImageResponse(List.of());
 		}
 
+		if (imageApiResponse.data() == null) {
+			logger.warn("No data response: {} for request: {}", imageApiResponse, OpenAiImageEditRequest);
+			return new ImageResponse(List.of());
+		}
+
 		List<ImageGeneration> imageGenerationList = imageApiResponse.data()
 			.stream()
 			.map(entry -> new ImageGeneration(new Image(entry.url(), entry.b64Json()),

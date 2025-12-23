@@ -21,6 +21,10 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import org.springframework.ai.content.Media;
 import org.springframework.ai.model.ApiKey;
@@ -49,11 +53,15 @@ import org.springframework.web.client.RestClient;
  */
 public class OpenAiImageApi {
 
+	private static final Logger logger = LoggerFactory.getLogger(OpenAiImageApi.class);
+
 	public static final String DEFAULT_IMAGE_MODEL = ImageModel.DALL_E_3.getValue();
 
 	private final RestClient restClient;
 
 	private final String imagesPath;
+
+	private final ObjectMapper objectMapper;
 
 	/**
 	 * Create a new OpenAI Image API with the provided base URL.
@@ -84,6 +92,7 @@ public class OpenAiImageApi {
 		// @formatter:on
 
 		this.imagesPath = imagesPath;
+		this.objectMapper = new ObjectMapper();
 	}
 
 	public ResponseEntity<OpenAiImageResponse> createImage(OpenAiImageRequest openAiImageRequest) {
@@ -162,12 +171,25 @@ public class OpenAiImageApi {
 			multipartBody.add("mask", imageResource);
 		}
 
-		return this.restClient.post()
+		ResponseEntity<String> rawResponse = this.restClient.post()
 			.uri(this.imagesPath)
 			.body(multipartBody)
 			.contentType(MediaType.MULTIPART_FORM_DATA)
 			.retrieve()
-			.toEntity(OpenAiImageResponse.class);
+			.toEntity(String.class);
+
+		String responseBody = rawResponse.getBody();
+		String logMessage = (responseBody != null && responseBody.length() > 200)
+				? responseBody.substring(0, 200) + "..." : responseBody;
+		logger.debug("OpenAI Image Edit API raw response (first 200 chars): {}", logMessage);
+
+		try {
+			OpenAiImageResponse response = this.objectMapper.readValue(responseBody, OpenAiImageResponse.class);
+			return ResponseEntity.status(rawResponse.getStatusCode()).headers(rawResponse.getHeaders()).body(response);
+		}
+		catch (JsonProcessingException e) {
+			throw new RuntimeException("Failed to parse OpenAI Image Edit API response", e);
+		}
 	}
 
 	public static Builder builder() {
