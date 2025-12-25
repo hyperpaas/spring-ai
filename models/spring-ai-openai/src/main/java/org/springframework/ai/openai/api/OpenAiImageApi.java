@@ -137,7 +137,7 @@ public class OpenAiImageApi {
 					return finalFilename;
 				}
 			};
-			multipartBody.add("image[]", imageResource);
+			multipartBody.add("image", imageResource);
 		});
 
 		multipartBody.add("prompt", openAiImageEditRequest.prompt());
