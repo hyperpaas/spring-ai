@@ -137,6 +137,8 @@ public class OpenAiImageApi {
 					return finalFilename;
 				}
 			};
+			// todo 这里的参数名可能是个坑，目前为 ephone 等三方服务商的 gemini 调用使用，
+			//  但部分服务商（openAi 官方）或模型需求的是 `images[]` 这种形式，需要想办法兼容。。。
 			multipartBody.add("image", imageResource);
 		});
 
