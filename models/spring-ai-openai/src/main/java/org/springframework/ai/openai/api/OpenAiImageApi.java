@@ -16,6 +16,7 @@
 
 package org.springframework.ai.openai.api;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -137,9 +138,7 @@ public class OpenAiImageApi {
 					return finalFilename;
 				}
 			};
-			// todo 这里的参数名可能是个坑，目前为 ephone 等三方服务商的 gemini 调用使用，
-			//  但部分服务商（openAi 官方）或模型需求的是 `images[]` 这种形式，需要想办法兼容。。。
-			multipartBody.add("image", imageResource);
+			multipartBody.add(openAiImageEditRequest.imageFieldName(), imageResource);
 		});
 
 		multipartBody.add("prompt", openAiImageEditRequest.prompt());
@@ -262,10 +261,12 @@ public class OpenAiImageApi {
 			@JsonProperty("quality") String quality,
 			@JsonProperty("response_format") String responseFormat,
 			@JsonProperty("size") String size,
-			@JsonProperty("user") String user) {
+			@JsonProperty("user") String user,
+			// Secondary fields, not used as request parameters
+			@JsonIgnore String imageFieldName) {
 
 		public OpenAiImageEditRequest(List<Media> images, String prompt, String model) {
-			this(images, prompt, model, null, null, null, null, null, null);
+			this(images, prompt, model, null, null, null, null, null, null, null);
 		}
 
 		public OpenAiImageEditRequest(Media image, String prompt, String model) {
@@ -282,6 +283,7 @@ public class OpenAiImageApi {
 			private String responseFormat;
 			private String size;
 			private String user;
+			private String imageFieldName;
 
 			public Builder image(List<Media> image) {
 				this.image = image;
@@ -328,8 +330,15 @@ public class OpenAiImageApi {
 				return this;
 			}
 
+			public Builder imageFieldName(String imageFieldName) {
+				this.imageFieldName = imageFieldName;
+				return this;
+			}
+
 			public OpenAiImageEditRequest build() {
-				return new OpenAiImageEditRequest(this.image, this.prompt, this.model, this.mask, this.n, this.quality, this.responseFormat, this.size, this.user);
+				return new OpenAiImageEditRequest(this.image, this.prompt, this.model, this.mask,
+						this.n, this.quality, this.responseFormat, this.size, this.user,
+						this.imageFieldName);
 			}
 		}
 	}

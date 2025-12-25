@@ -108,6 +108,12 @@ public class OpenAiImageEditOptions implements ImageEditOptions {
 	@JsonProperty("size_height")
 	private Integer height;
 
+	/**
+	 * It is compatible with the different requirements of different service providers for
+	 * image field names
+	 */
+	private String imageFieldName;
+
 	public static Builder builder() {
 		return new Builder();
 	}
@@ -144,6 +150,14 @@ public class OpenAiImageEditOptions implements ImageEditOptions {
 
 	public void setQuality(String quality) {
 		this.quality = quality;
+	}
+
+	public String getImageFieldName() {
+		return this.imageFieldName;
+	}
+
+	public void setImageFieldName(String imageFieldName) {
+		this.imageFieldName = imageFieldName;
 	}
 
 	@Override
@@ -310,6 +324,11 @@ public class OpenAiImageEditOptions implements ImageEditOptions {
 			return this;
 		}
 
+		public Builder imageFieldName(String imageFieldName) {
+			this.options.setImageFieldName(imageFieldName);
+			return this;
+		}
+
 		public Builder withN(Integer n) {
 			this.options.setN(n);
 			return this;
@@ -342,6 +361,11 @@ public class OpenAiImageEditOptions implements ImageEditOptions {
 
 		public Builder withUser(String user) {
 			this.options.setUser(user);
+			return this;
+		}
+
+		public Builder withImageFieldName(String imageFieldName) {
+			this.options.setImageFieldName(imageFieldName);
 			return this;
 		}
 

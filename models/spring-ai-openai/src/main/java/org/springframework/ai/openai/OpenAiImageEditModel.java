@@ -16,6 +16,7 @@
 
 package org.springframework.ai.openai;
 
+import io.micrometer.common.util.StringUtils;
 import java.util.List;
 
 import org.slf4j.Logger;
@@ -93,11 +94,16 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		this.openAiImageApi = openAiImageApi;
 		this.defaultOptions = options;
 		this.retryTemplate = retryTemplate;
+
+		if (StringUtils.isEmpty(this.defaultOptions.getImageFieldName())) {
+			// init default image field name: `image[]`
+			this.defaultOptions.setImageFieldName("image[]");
+		}
 	}
 
 	@Override
-	public ImageResponse call(ImageEditPrompt ImageEditPrompt) {
-		ImageEditPrompt requestImageEditPrompt = buildRequestImageEditPrompt(ImageEditPrompt);
+	public ImageResponse call(ImageEditPrompt imageEditPrompt) {
+		ImageEditPrompt requestImageEditPrompt = buildRequestImageEditPrompt(imageEditPrompt);
 		OpenAiImageEditRequest imageRequest = createRequest(requestImageEditPrompt);
 
 		ResponseEntity<OpenAiImageResponse> imageResponseEntity = this.retryTemplate
@@ -134,6 +140,9 @@ public class OpenAiImageEditModel implements ImageEditModel {
 		}
 		if (imageOptions.getModel() != null) {
 			builder.model(imageOptions.getModel());
+		}
+		if (imageOptions.getImageFieldName() != null) {
+			builder.imageFieldName(imageOptions.getImageFieldName());
 		}
 
 		return builder.build();
@@ -183,6 +192,8 @@ public class OpenAiImageEditModel implements ImageEditModel {
 			.user(ModelOptionsUtils.mergeOption(runtimeOptions.getUser(), this.defaultOptions.getUser()))
 			.width(ModelOptionsUtils.mergeOption(runtimeOptions.getWidth(), this.defaultOptions.getWidth()))
 			.height(ModelOptionsUtils.mergeOption(runtimeOptions.getHeight(), this.defaultOptions.getHeight()))
+			.imageFieldName(ModelOptionsUtils.mergeOption(runtimeOptions.getImageFieldName(),
+					this.defaultOptions.getImageFieldName()))
 			.build();
 
 		return new ImageEditPrompt(imageEditPrompt.getInstructions(), requestOptions);
