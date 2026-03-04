@@ -98,7 +98,12 @@ public enum AiProvider {
 	/**
 	 * AI system provided by Zhipuai.
 	 */
-	ZHIPUAI("zhipuai");
+	ZHIPUAI("zhipuai"),
+
+	/**
+	 * AI system provided by Volcengine
+	 */
+	VOLCENGINE("volcengine");
 
 	private final String value;
 
