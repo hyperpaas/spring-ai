@@ -1,5 +1,6 @@
 package org.springframework.ai.video;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import org.springframework.ai.content.Media;
@@ -14,13 +15,13 @@ public class VideoMessage {
 	/**
 	 * 指代本次视频生成中使用的外部资源，由于各平台资源引用方式不同，这里统一存储为 Map，资源由 key 自行索引
 	 */
-	private Map<String, Media> resources;
+	private Map<String, List<Media>> resources;
 
 	public VideoMessage(String prompt) {
 		this.prompt = prompt;
 	}
 
-	public VideoMessage(String prompt, Map<String, Media> resources) {
+	public VideoMessage(String prompt, Map<String, List<Media>> resources) {
 		this.prompt = prompt;
 		this.resources = resources;
 	}
@@ -29,7 +30,7 @@ public class VideoMessage {
 		return prompt;
 	}
 
-	public Map<String, Media> getResources() {
+	public Map<String, List<Media>> getResources() {
 		return resources;
 	}
 
