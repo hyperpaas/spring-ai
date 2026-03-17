@@ -19,6 +19,10 @@ public class VideoStatus {
 
 	private String url;
 
+	// 提供一个无参构造器，便于继承拓展
+	public VideoStatus() {
+	}
+
 	private VideoStatus(Builder builder) {
 		setId(builder.id);
 		setModel(builder.model);
