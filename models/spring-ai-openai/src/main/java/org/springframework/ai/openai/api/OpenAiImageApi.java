@@ -58,9 +58,13 @@ public class OpenAiImageApi {
 
 	public static final String DEFAULT_IMAGE_MODEL = ImageModel.DALL_E_3.getValue();
 
+	public static final String DEFAULT_IMAGE_EDIT_PATH = "v1/images/edits";
+
 	private final RestClient restClient;
 
 	private final String imagesPath;
+
+	private final String imageEditPath;
 
 	private final ObjectMapper objectMapper;
 
@@ -70,11 +74,12 @@ public class OpenAiImageApi {
 	 * @param apiKey OpenAI apiKey.
 	 * @param headers the http headers to use.
 	 * @param imagesPath the images path to use.
+	 * @param imageEditPath the image edit path to use.
 	 * @param restClientBuilder the rest client builder to use.
 	 * @param responseErrorHandler the response error handler to use.
 	 */
 	public OpenAiImageApi(String baseUrl, ApiKey apiKey, MultiValueMap<String, String> headers, String imagesPath,
-			RestClient.Builder restClientBuilder, ResponseErrorHandler responseErrorHandler) {
+			String imageEditPath, RestClient.Builder restClientBuilder, ResponseErrorHandler responseErrorHandler) {
 
 		// @formatter:off
 		this.restClient = restClientBuilder.clone()
@@ -93,6 +98,7 @@ public class OpenAiImageApi {
 		// @formatter:on
 
 		this.imagesPath = imagesPath;
+		this.imageEditPath = imageEditPath;
 		this.objectMapper = new ObjectMapper();
 	}
 
@@ -173,7 +179,7 @@ public class OpenAiImageApi {
 		}
 
 		ResponseEntity<String> rawResponse = this.restClient.post()
-			.uri(this.imagesPath)
+			.uri(this.imageEditPath)
 			.body(multipartBody)
 			.contentType(MediaType.MULTIPART_FORM_DATA)
 			.retrieve()
@@ -376,6 +382,8 @@ public class OpenAiImageApi {
 
 		private String imagesPath = "v1/images/generations";
 
+		private String imageEditPath = DEFAULT_IMAGE_EDIT_PATH;
+
 		public Builder baseUrl(String baseUrl) {
 			Assert.hasText(baseUrl, "baseUrl cannot be null or empty");
 			this.baseUrl = baseUrl;
@@ -385,6 +393,12 @@ public class OpenAiImageApi {
 		public Builder imagesPath(String imagesPath) {
 			Assert.hasText(imagesPath, "imagesPath cannot be null or empty");
 			this.imagesPath = imagesPath;
+			return this;
+		}
+
+		public Builder imageEditPath(String imageEditPath) {
+			Assert.hasText(imageEditPath, "imageEditPath cannot be null or empty");
+			this.imageEditPath = imageEditPath;
 			return this;
 		}
 
@@ -420,8 +434,8 @@ public class OpenAiImageApi {
 
 		public OpenAiImageApi build() {
 			Assert.notNull(this.apiKey, "apiKey must be set");
-			return new OpenAiImageApi(this.baseUrl, this.apiKey, this.headers, this.imagesPath, this.restClientBuilder,
-					this.responseErrorHandler);
+			return new OpenAiImageApi(this.baseUrl, this.apiKey, this.headers, this.imagesPath, this.imageEditPath,
+					this.restClientBuilder, this.responseErrorHandler);
 		}
 
 	}

@@ -34,7 +34,6 @@ public class ImageModelObservationContext extends ModelObservationContext<ImageP
 	ImageModelObservationContext(ImagePrompt imagePrompt, String provider) {
 		super(imagePrompt,
 				AiOperationMetadata.builder().operationType(AiOperationType.IMAGE.value()).provider(provider).build());
-		Assert.notNull(imagePrompt.getOptions(), "image options cannot be null");
 	}
 
 	public static Builder builder() {

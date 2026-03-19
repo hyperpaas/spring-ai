@@ -16,13 +16,18 @@
 
 package org.springframework.ai.image;
 
+import java.util.List;
 import java.util.Objects;
+
+import org.springframework.ai.content.Media;
 
 public class ImageMessage {
 
 	private String text;
 
 	private Float weight;
+
+	private List<Media> image;
 
 	public ImageMessage(String text) {
 		this.text = text;
@@ -33,6 +38,11 @@ public class ImageMessage {
 		this.weight = weight;
 	}
 
+	public ImageMessage(String text, List<Media> image) {
+		this.text = text;
+		this.image = image;
+	}
+
 	public String getText() {
 		return this.text;
 	}
@@ -41,9 +51,14 @@ public class ImageMessage {
 		return this.weight;
 	}
 
+	public List<Media> getImage() {
+		return this.image;
+	}
+
 	@Override
 	public String toString() {
-		return "ImageMessage{" + "text='" + this.text + '\'' + ", weight=" + this.weight + '}';
+		return "ImageMessage{" + "text='" + this.text + '\'' + ", weight=" + this.weight + ", image=" + this.image
+				+ '}';
 	}
 
 	@Override
@@ -54,12 +69,13 @@ public class ImageMessage {
 		if (!(o instanceof ImageMessage that)) {
 			return false;
 		}
-		return Objects.equals(this.text, that.text) && Objects.equals(this.weight, that.weight);
+		return Objects.equals(this.text, that.text) && Objects.equals(this.weight, that.weight)
+				&& Objects.equals(this.image, that.image);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.text, this.weight);
+		return Objects.hash(this.text, this.weight, this.image);
 	}
 
 }

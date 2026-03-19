@@ -18,6 +18,9 @@ package org.springframework.ai.openai;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
@@ -30,6 +33,7 @@ class OpenAiImageOptionsTests {
 
 	@Test
 	void testBuilderWithAllFields() {
+		Resource mask = new ByteArrayResource(new byte[] { 1, 2, 3 });
 		OpenAiImageOptions options = OpenAiImageOptions.builder()
 			.N(2)
 			.model("dall-e-3")
@@ -39,6 +43,8 @@ class OpenAiImageOptionsTests {
 			.height(1024)
 			.style("vivid")
 			.user("test-user")
+			.mask(mask)
+			.imageFieldName("image[]")
 			.build();
 
 		assertThat(options.getN()).isEqualTo(2);
@@ -50,6 +56,8 @@ class OpenAiImageOptionsTests {
 		assertThat(options.getSize()).isEqualTo("1024x1024");
 		assertThat(options.getStyle()).isEqualTo("vivid");
 		assertThat(options.getUser()).isEqualTo("test-user");
+		assertThat(options.getMask()).isEqualTo(mask);
+		assertThat(options.getImageFieldName()).isEqualTo("image[]");
 	}
 
 	@Test
@@ -135,6 +143,21 @@ class OpenAiImageOptionsTests {
 		assertThat(options.getSize()).isNull();
 		assertThat(options.getStyle()).isNull();
 		assertThat(options.getUser()).isNull();
+		assertThat(options.getMask()).isNull();
+		assertThat(options.getImageFieldName()).isNull();
+	}
+
+	@Test
+	void testImageEditSpecificOptions() {
+		Resource mask = new ByteArrayResource(new byte[] { 4, 5, 6 });
+		OpenAiImageOptions options = OpenAiImageOptions.builder().mask(mask).imageFieldName("image[]").build();
+
+		assertThat(options.getMask()).isEqualTo(mask);
+		assertThat(options.getImageFieldName()).isEqualTo("image[]");
+
+		OpenAiImageOptions copied = options.copy();
+		assertThat(copied.getMask()).isEqualTo(mask);
+		assertThat(copied.getImageFieldName()).isEqualTo("image[]");
 	}
 
 	@Test

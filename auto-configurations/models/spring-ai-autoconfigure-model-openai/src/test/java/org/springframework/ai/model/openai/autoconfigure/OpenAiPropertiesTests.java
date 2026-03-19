@@ -30,7 +30,6 @@ import org.springframework.ai.openai.api.OpenAiApi;
 import org.springframework.ai.openai.api.OpenAiApi.ChatCompletionRequest.ToolChoiceBuilder;
 import org.springframework.ai.openai.api.OpenAiAudioApi;
 import org.springframework.ai.utils.SpringAiTestAutoConfigurations;
-import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -323,31 +322,7 @@ public class OpenAiPropertiesTests {
 
 				assertThat(imageProperties.getOptions().getModel()).isEqualTo("MODEL_XYZ");
 				assertThat(imageProperties.getOptions().getN()).isEqualTo(3);
-			});
-	}
-
-	@Test
-	public void imageEditProperties() {
-		new ApplicationContextRunner().withPropertyValues(
-		// @formatter:off
-						"spring.ai.openai.base-url=TEST_BASE_URL",
-						"spring.ai.openai.api-key=abc123",
-						"spring.ai.openai.image.edit.options.model=MODEL_XYZ",
-						"spring.ai.openai.image.edit.options.n=3")
-				// @formatter:on
-			.withConfiguration(AutoConfigurations.of(OpenAiImageEditAutoConfiguration.class))
-			.run(context -> {
-				var imageEditProperties = context.getBean(OpenAiImageEditProperties.class);
-				var connectionProperties = context.getBean(OpenAiConnectionProperties.class);
-
-				assertThat(connectionProperties.getApiKey()).isEqualTo("abc123");
-				assertThat(connectionProperties.getBaseUrl()).isEqualTo("TEST_BASE_URL");
-
-				assertThat(imageEditProperties.getApiKey()).isNull();
-				assertThat(imageEditProperties.getBaseUrl()).isNull();
-
-				assertThat(imageEditProperties.getOptions().getModel()).isEqualTo("MODEL_XYZ");
-				assertThat(imageEditProperties.getOptions().getN()).isEqualTo(3);
+				assertThat(imageProperties.getImageEditPath()).isEqualTo(OpenAiImageProperties.DEFAULT_IMAGE_EDIT_PATH);
 			});
 	}
 
@@ -375,6 +350,21 @@ public class OpenAiPropertiesTests {
 
 				assertThat(imageProperties.getOptions().getModel()).isEqualTo("MODEL_XYZ");
 				assertThat(imageProperties.getOptions().getN()).isEqualTo(3);
+			});
+	}
+
+	@Test
+	public void imageEditPathProperty() {
+		this.contextRunner.withPropertyValues(
+		// @formatter:off
+						"spring.ai.openai.base-url=TEST_BASE_URL",
+						"spring.ai.openai.api-key=abc123",
+						"spring.ai.openai.image.image-edit-path=v1/images/custom-edits")
+				// @formatter:on
+			.withConfiguration(SpringAiTestAutoConfigurations.of(OpenAiImageAutoConfiguration.class))
+			.run(context -> {
+				var imageProperties = context.getBean(OpenAiImageProperties.class);
+				assertThat(imageProperties.getImageEditPath()).isEqualTo("v1/images/custom-edits");
 			});
 	}
 

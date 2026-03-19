@@ -22,6 +22,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import org.springframework.ai.image.ImageOptions;
+import org.springframework.core.io.Resource;
 
 /**
  * OpenAI Image API options. OpenAiImageOptions.java
@@ -108,6 +109,19 @@ public class OpenAiImageOptions implements ImageOptions {
 	@JsonProperty("user")
 	private String user;
 
+	/**
+	 * An additional image whose fully transparent areas indicate where image should be
+	 * edited.
+	 */
+	@JsonProperty("mask")
+	private Resource mask;
+
+	/**
+	 * It is compatible with the different requirements of different service providers for
+	 * image field names.
+	 */
+	private String imageFieldName;
+
 	public static Builder builder() {
 		return new Builder();
 	}
@@ -128,6 +142,8 @@ public class OpenAiImageOptions implements ImageOptions {
 		options.size = fromOptions.size;
 		options.style = fromOptions.style;
 		options.user = fromOptions.user;
+		options.mask = fromOptions.mask;
+		options.imageFieldName = fromOptions.imageFieldName;
 		return options;
 	}
 
@@ -237,6 +253,22 @@ public class OpenAiImageOptions implements ImageOptions {
 		this.user = user;
 	}
 
+	public Resource getMask() {
+		return this.mask;
+	}
+
+	public void setMask(Resource mask) {
+		this.mask = mask;
+	}
+
+	public String getImageFieldName() {
+		return this.imageFieldName;
+	}
+
+	public void setImageFieldName(String imageFieldName) {
+		this.imageFieldName = imageFieldName;
+	}
+
 	public String getSize() {
 		if (this.size != null) {
 			return this.size;
@@ -274,13 +306,14 @@ public class OpenAiImageOptions implements ImageOptions {
 				&& Objects.equals(this.width, that.width) && Objects.equals(this.height, that.height)
 				&& Objects.equals(this.quality, that.quality)
 				&& Objects.equals(this.responseFormat, that.responseFormat) && Objects.equals(this.size, that.size)
-				&& Objects.equals(this.style, that.style) && Objects.equals(this.user, that.user);
+				&& Objects.equals(this.style, that.style) && Objects.equals(this.user, that.user)
+				&& Objects.equals(this.mask, that.mask) && Objects.equals(this.imageFieldName, that.imageFieldName);
 	}
 
 	@Override
 	public int hashCode() {
 		return Objects.hash(this.n, this.model, this.width, this.height, this.quality, this.responseFormat, this.size,
-				this.style, this.user);
+				this.style, this.user, this.mask, this.imageFieldName);
 	}
 
 	@Override
@@ -288,7 +321,8 @@ public class OpenAiImageOptions implements ImageOptions {
 		return "OpenAiImageOptions{" + "n=" + this.n + ", model='" + this.model + '\'' + ", width=" + this.width
 				+ ", height=" + this.height + ", quality='" + this.quality + '\'' + ", responseFormat='"
 				+ this.responseFormat + '\'' + ", size='" + this.size + '\'' + ", style='" + this.style + '\''
-				+ ", user='" + this.user + '\'' + '}';
+				+ ", user='" + this.user + '\'' + ", mask=" + this.mask + ", imageFieldName='" + this.imageFieldName
+				+ '\'' + '}';
 	}
 
 	/**
@@ -348,6 +382,21 @@ public class OpenAiImageOptions implements ImageOptions {
 
 		public Builder user(String user) {
 			this.options.setUser(user);
+			return this;
+		}
+
+		public Builder size(String size) {
+			this.options.setSize(size);
+			return this;
+		}
+
+		public Builder mask(Resource mask) {
+			this.options.setMask(mask);
+			return this;
+		}
+
+		public Builder imageFieldName(String imageFieldName) {
+			this.options.setImageFieldName(imageFieldName);
 			return this;
 		}
 

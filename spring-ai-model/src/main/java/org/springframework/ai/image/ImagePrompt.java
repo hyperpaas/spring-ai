@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.model.ModelRequest;
 
 public class ImagePrompt implements ModelRequest<List<ImageMessage>> {
@@ -45,8 +46,16 @@ public class ImagePrompt implements ModelRequest<List<ImageMessage>> {
 		this(new ImageMessage(instructions), imageOptions);
 	}
 
+	public ImagePrompt(List<Media> image, String instructions, ImageOptions imageOptions) {
+		this(new ImageMessage(instructions, image), imageOptions);
+	}
+
 	public ImagePrompt(String instructions) {
 		this(new ImageMessage(instructions), ImageOptionsBuilder.builder().build());
+	}
+
+	public ImagePrompt(List<Media> image, String instructions) {
+		this(new ImageMessage(instructions, image), ImageOptionsBuilder.builder().build());
 	}
 
 	@Override

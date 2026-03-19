@@ -19,17 +19,14 @@ package org.springframework.ai.openai.image;
 import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import org.springframework.ai.content.Media;
-import org.springframework.ai.image.ImageEditMessage;
-import org.springframework.ai.image.ImageEditPrompt;
+import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.image.ImageResponse;
 import org.springframework.ai.model.SimpleApiKey;
-import org.springframework.ai.openai.OpenAiImageEditModel;
-import org.springframework.ai.openai.OpenAiImageEditOptions;
+import org.springframework.ai.openai.OpenAiImageModel;
 import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.SpringBootConfiguration;
@@ -49,20 +46,15 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-@RestClientTest(OpenAiImageEditModelTest.Config.class)
+@RestClientTest(OpenAiImageModelEditTests.Config.class)
 @EnabledIfEnvironmentVariable(named = "OPENAI_API_KEY", matches = ".+")
-public class OpenAiImageEditModelTest {
+public class OpenAiImageModelEditTests {
 
 	@Autowired
-	private OpenAiImageEditModel openAiImageEditModel;
+	private OpenAiImageModel openAiImageModel;
 
 	@Autowired
 	private MockRestServiceServer server;
-
-	@BeforeEach
-	void setup() {
-		// Setup code if needed
-	}
 
 	@AfterEach
 	void resetMockServer() {
@@ -74,10 +66,9 @@ public class OpenAiImageEditModelTest {
 		prepareMock();
 
 		Media image = new Media(MimeTypeUtils.IMAGE_PNG, new ClassPathResource("test.png"));
-		ImageEditPrompt prompt = new ImageEditPrompt(new ImageEditMessage(List.of(image), "Add a sunset background."),
-				OpenAiImageEditOptions.builder().build());
+		ImagePrompt prompt = new ImagePrompt(List.of(image), "Add a sunset background.");
 
-		ImageResponse response = this.openAiImageEditModel.call(prompt);
+		ImageResponse response = this.openAiImageModel.call(prompt);
 
 		assertThat(response).isNotNull();
 		assertThat(response.getResults()).hasSize(1);
@@ -118,8 +109,8 @@ public class OpenAiImageEditModelTest {
 		}
 
 		@Bean
-		public OpenAiImageEditModel openAiImageEditModel(OpenAiImageApi openAiImageApi) {
-			return new OpenAiImageEditModel(openAiImageApi);
+		public OpenAiImageModel openAiImageModel(OpenAiImageApi openAiImageApi) {
+			return new OpenAiImageModel(openAiImageApi);
 		}
 
 	}

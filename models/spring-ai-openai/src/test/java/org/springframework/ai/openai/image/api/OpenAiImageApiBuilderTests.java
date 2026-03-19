@@ -73,6 +73,8 @@ class OpenAiImageApiBuilderTests {
 			.baseUrl(TEST_BASE_URL)
 			.apiKey(TEST_API_KEY)
 			.headers(headers)
+			.imagesPath("v1/images/generations")
+			.imageEditPath("v1/images/edits")
 			.restClientBuilder(restClientBuilder)
 			.responseErrorHandler(errorHandler)
 			.build();
@@ -109,6 +111,17 @@ class OpenAiImageApiBuilderTests {
 		assertThatThrownBy(() -> OpenAiImageApi.builder().restClientBuilder(null).build())
 			.isInstanceOf(IllegalArgumentException.class)
 			.hasMessageContaining("restClientBuilder cannot be null");
+	}
+
+	@Test
+	void testInvalidImageEditPath() {
+		assertThatThrownBy(() -> OpenAiImageApi.builder().imageEditPath("").build())
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("imageEditPath cannot be null or empty");
+
+		assertThatThrownBy(() -> OpenAiImageApi.builder().imageEditPath(null).build())
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("imageEditPath cannot be null or empty");
 	}
 
 	@Test

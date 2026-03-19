@@ -22,8 +22,10 @@ import io.micrometer.observation.ObservationRegistry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.image.Image;
 import org.springframework.ai.image.ImageGeneration;
+import org.springframework.ai.image.ImageMessage;
 import org.springframework.ai.image.ImageModel;
 import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImagePrompt;
@@ -38,13 +40,16 @@ import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.ai.openai.api.common.OpenAiApiConstants;
 import org.springframework.ai.openai.metadata.OpenAiImageGenerationMetadata;
 import org.springframework.ai.retry.RetryUtils;
+import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
+import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * OpenAiImageModel is a class that implements the ImageModel interface. It provides a
- * client for calling the OpenAI image generation API.
+ * client for calling the OpenAI image generation and image edit APIs.
  *
  * @author Mark Pollack
  * @author Christian Tzolov
@@ -55,6 +60,8 @@ import org.springframework.util.Assert;
 public class OpenAiImageModel implements ImageModel {
 
 	private static final Logger logger = LoggerFactory.getLogger(OpenAiImageModel.class);
+
+	private static final String DEFAULT_IMAGE_FIELD_NAME = "image[]";
 
 	private static final ImageModelObservationConvention DEFAULT_OBSERVATION_CONVENTION = new DefaultImageModelObservationConvention();
 
@@ -90,7 +97,8 @@ public class OpenAiImageModel implements ImageModel {
 	 * @throws IllegalArgumentException if openAiImageApi is null
 	 */
 	public OpenAiImageModel(OpenAiImageApi openAiImageApi) {
-		this(openAiImageApi, OpenAiImageOptions.builder().build(), RetryUtils.DEFAULT_RETRY_TEMPLATE);
+		this(openAiImageApi, OpenAiImageOptions.builder().model(OpenAiImageApi.DEFAULT_IMAGE_MODEL).build(),
+				RetryUtils.DEFAULT_RETRY_TEMPLATE);
 	}
 
 	/**
@@ -129,8 +137,10 @@ public class OpenAiImageModel implements ImageModel {
 		// Before moving any further, build the final request ImagePrompt,
 		// merging runtime and default options.
 		ImagePrompt requestImagePrompt = buildRequestImagePrompt(imagePrompt);
-
-		OpenAiImageApi.OpenAiImageRequest imageRequest = createRequest(requestImagePrompt);
+		OpenAiImageOptions imageOptions = (OpenAiImageOptions) requestImagePrompt.getOptions();
+		Object imageRequest = hasInputImages(requestImagePrompt)
+				? createImageEditRequest(requestImagePrompt, imageOptions)
+				: createImageRequest(requestImagePrompt, imageOptions);
 
 		var observationContext = ImageModelObservationContext.builder()
 			.imagePrompt(imagePrompt)
@@ -142,7 +152,7 @@ public class OpenAiImageModel implements ImageModel {
 					this.observationRegistry)
 			.observe(() -> {
 				ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity = this.retryTemplate
-					.execute(ctx -> this.openAiImageApi.createImage(imageRequest));
+					.execute(ctx -> executeRequest(imageRequest));
 
 				ImageResponse imageResponse = convertResponse(imageResponseEntity, imageRequest);
 
@@ -152,9 +162,9 @@ public class OpenAiImageModel implements ImageModel {
 			});
 	}
 
-	private OpenAiImageApi.OpenAiImageRequest createRequest(ImagePrompt imagePrompt) {
-		String instructions = imagePrompt.getInstructions().get(0).getText();
-		OpenAiImageOptions imageOptions = (OpenAiImageOptions) imagePrompt.getOptions();
+	private OpenAiImageApi.OpenAiImageRequest createImageRequest(ImagePrompt imagePrompt,
+			OpenAiImageOptions imageOptions) {
+		String instructions = getFirstMessage(imagePrompt).getText();
 
 		OpenAiImageApi.OpenAiImageRequest imageRequest = new OpenAiImageApi.OpenAiImageRequest(instructions,
 				OpenAiImageApi.DEFAULT_IMAGE_MODEL);
@@ -162,8 +172,50 @@ public class OpenAiImageModel implements ImageModel {
 		return ModelOptionsUtils.merge(imageOptions, imageRequest, OpenAiImageApi.OpenAiImageRequest.class);
 	}
 
+	private OpenAiImageApi.OpenAiImageEditRequest createImageEditRequest(ImagePrompt imagePrompt,
+			OpenAiImageOptions imageOptions) {
+		ImageMessage imageMessage = getFirstMessage(imagePrompt);
+		OpenAiImageApi.OpenAiImageEditRequest.Builder builder = new OpenAiImageApi.OpenAiImageEditRequest.Builder()
+			.image(imageMessage.getImage())
+			.prompt(imageMessage.getText())
+			.model(imageOptions.getModel())
+			.imageFieldName(imageOptions.getImageFieldName());
+
+		if (imageOptions.getMask() != null) {
+			Resource mask = imageOptions.getMask();
+			builder.mask(Media.builder().data(mask).build());
+		}
+		if (imageOptions.getN() != null) {
+			builder.n(imageOptions.getN());
+		}
+		if (imageOptions.getQuality() != null) {
+			builder.quality(imageOptions.getQuality());
+		}
+		if (imageOptions.getResponseFormat() != null) {
+			builder.responseFormat(imageOptions.getResponseFormat());
+		}
+		if (imageOptions.getSize() != null) {
+			builder.size(imageOptions.getSize());
+		}
+		if (imageOptions.getUser() != null) {
+			builder.user(imageOptions.getUser());
+		}
+
+		return builder.build();
+	}
+
+	private ResponseEntity<OpenAiImageApi.OpenAiImageResponse> executeRequest(Object imageRequest) {
+		if (imageRequest instanceof OpenAiImageApi.OpenAiImageRequest request) {
+			return this.openAiImageApi.createImage(request);
+		}
+		if (imageRequest instanceof OpenAiImageApi.OpenAiImageEditRequest request) {
+			return this.openAiImageApi.createImageEdit(request);
+		}
+		throw new IllegalArgumentException("Unsupported image request type: " + imageRequest.getClass());
+	}
+
 	private ImageResponse convertResponse(ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity,
-			OpenAiImageApi.OpenAiImageRequest openAiImageRequest) {
+			Object openAiImageRequest) {
 		OpenAiImageApi.OpenAiImageResponse imageApiResponse = imageResponseEntity.getBody();
 		if (imageApiResponse == null) {
 			logger.warn("No image response returned for request: {}", openAiImageRequest);
@@ -188,21 +240,40 @@ public class OpenAiImageModel implements ImageModel {
 					OpenAiImageOptions.class);
 		}
 
-		OpenAiImageOptions requestOptions = runtimeOptions == null ? this.defaultOptions : OpenAiImageOptions.builder()
-			// Handle portable image options
-			.model(ModelOptionsUtils.mergeOption(runtimeOptions.getModel(), this.defaultOptions.getModel()))
-			.N(ModelOptionsUtils.mergeOption(runtimeOptions.getN(), this.defaultOptions.getN()))
-			.responseFormat(ModelOptionsUtils.mergeOption(runtimeOptions.getResponseFormat(),
-					this.defaultOptions.getResponseFormat()))
-			.width(ModelOptionsUtils.mergeOption(runtimeOptions.getWidth(), this.defaultOptions.getWidth()))
-			.height(ModelOptionsUtils.mergeOption(runtimeOptions.getHeight(), this.defaultOptions.getHeight()))
-			.style(ModelOptionsUtils.mergeOption(runtimeOptions.getStyle(), this.defaultOptions.getStyle()))
-			// Handle OpenAI specific image options
-			.quality(ModelOptionsUtils.mergeOption(runtimeOptions.getQuality(), this.defaultOptions.getQuality()))
-			.user(ModelOptionsUtils.mergeOption(runtimeOptions.getUser(), this.defaultOptions.getUser()))
-			.build();
+		OpenAiImageOptions requestOptions = runtimeOptions == null ? OpenAiImageOptions.fromOptions(this.defaultOptions)
+				: OpenAiImageOptions.builder()
+					// Handle portable image options
+					.model(ModelOptionsUtils.mergeOption(runtimeOptions.getModel(), this.defaultOptions.getModel()))
+					.N(ModelOptionsUtils.mergeOption(runtimeOptions.getN(), this.defaultOptions.getN()))
+					.responseFormat(ModelOptionsUtils.mergeOption(runtimeOptions.getResponseFormat(),
+							this.defaultOptions.getResponseFormat()))
+					.width(ModelOptionsUtils.mergeOption(runtimeOptions.getWidth(), this.defaultOptions.getWidth()))
+					.height(ModelOptionsUtils.mergeOption(runtimeOptions.getHeight(), this.defaultOptions.getHeight()))
+					.style(ModelOptionsUtils.mergeOption(runtimeOptions.getStyle(), this.defaultOptions.getStyle()))
+					.size(ModelOptionsUtils.mergeOption(runtimeOptions.getSize(), this.defaultOptions.getSize()))
+					// Handle OpenAI specific image options
+					.quality(ModelOptionsUtils.mergeOption(runtimeOptions.getQuality(),
+							this.defaultOptions.getQuality()))
+					.user(ModelOptionsUtils.mergeOption(runtimeOptions.getUser(), this.defaultOptions.getUser()))
+					.mask(ModelOptionsUtils.mergeOption(runtimeOptions.getMask(), this.defaultOptions.getMask()))
+					.imageFieldName(ModelOptionsUtils.mergeOption(runtimeOptions.getImageFieldName(),
+							this.defaultOptions.getImageFieldName()))
+					.build();
+
+		if (!StringUtils.hasText(requestOptions.getImageFieldName())) {
+			requestOptions.setImageFieldName(DEFAULT_IMAGE_FIELD_NAME);
+		}
 
 		return new ImagePrompt(imagePrompt.getInstructions(), requestOptions);
+	}
+
+	private boolean hasInputImages(ImagePrompt imagePrompt) {
+		return !CollectionUtils.isEmpty(getFirstMessage(imagePrompt).getImage());
+	}
+
+	private ImageMessage getFirstMessage(ImagePrompt imagePrompt) {
+		Assert.notEmpty(imagePrompt.getInstructions(), "Image prompt instructions must not be empty");
+		return imagePrompt.getInstructions().get(0);
 	}
 
 	/**

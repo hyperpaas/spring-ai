@@ -37,6 +37,10 @@ public class OpenAiImageProperties extends OpenAiParentProperties {
 
 	private String imagesPath = DEFAULT_IMAGES_PATH;
 
+	public static final String DEFAULT_IMAGE_EDIT_PATH = OpenAiImageApi.DEFAULT_IMAGE_EDIT_PATH;
+
+	private String imageEditPath = DEFAULT_IMAGE_EDIT_PATH;
+
 	public static final String DEFAULT_IMAGE_MODEL = OpenAiImageApi.ImageModel.DALL_E_3.getValue();
 
 	/**
@@ -55,6 +59,14 @@ public class OpenAiImageProperties extends OpenAiParentProperties {
 
 	public void setImagesPath(String imagesPath) {
 		this.imagesPath = imagesPath;
+	}
+
+	public String getImageEditPath() {
+		return this.imageEditPath;
+	}
+
+	public void setImageEditPath(String imageEditPath) {
+		this.imageEditPath = imageEditPath;
 	}
 
 }

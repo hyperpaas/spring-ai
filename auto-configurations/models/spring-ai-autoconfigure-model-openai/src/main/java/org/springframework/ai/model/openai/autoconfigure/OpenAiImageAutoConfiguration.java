@@ -75,6 +75,7 @@ public class OpenAiImageAutoConfiguration {
 			.apiKey(new SimpleApiKey(resolved.apiKey()))
 			.headers(resolved.headers())
 			.imagesPath(imageProperties.getImagesPath())
+			.imageEditPath(imageProperties.getImageEditPath())
 			.restClientBuilder(restClientBuilderProvider.getIfAvailable(RestClient::builder))
 			.responseErrorHandler(responseErrorHandler)
 			.build();
