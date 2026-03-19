@@ -143,7 +143,7 @@ public class OpenAiImageModel implements ImageModel {
 				: createImageRequest(requestImagePrompt, imageOptions);
 
 		var observationContext = ImageModelObservationContext.builder()
-			.imagePrompt(imagePrompt)
+			.imagePrompt(requestImagePrompt)
 			.provider(OpenAiApiConstants.PROVIDER_NAME)
 			.build();
 
