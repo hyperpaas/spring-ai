@@ -1,5 +1,6 @@
 package org.springframework.ai.video;
 
+import java.util.Map;
 import org.springframework.ai.model.ModelOptions;
 import org.springframework.lang.Nullable;
 
@@ -21,5 +22,8 @@ public interface VideoOptions extends ModelOptions {
 
 	@Nullable
 	String getResolution();
+
+	@Nullable
+	Map<String, String> getHttpHeaders();
 
 }

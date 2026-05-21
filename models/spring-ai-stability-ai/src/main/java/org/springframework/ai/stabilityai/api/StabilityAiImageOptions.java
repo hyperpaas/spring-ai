@@ -16,6 +16,7 @@
 
 package org.springframework.ai.stabilityai.api;
 
+import java.util.Map;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -287,6 +288,9 @@ public class StabilityAiImageOptions implements ImageOptions {
 	@JsonProperty("style_preset")
 	private String stylePreset;
 
+	@JsonIgnore
+	private Map<String, String> httpHeaders;
+
 	public static Builder builder() {
 		return new Builder();
 	}
@@ -393,6 +397,15 @@ public class StabilityAiImageOptions implements ImageOptions {
 
 	public void setStylePreset(String stylePreset) {
 		this.stylePreset = stylePreset;
+	}
+
+	@Override
+	public Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	public void setHttpHeaders(Map<String, String> httpHeaders) {
+		this.httpHeaders = httpHeaders;
 	}
 
 	@Override

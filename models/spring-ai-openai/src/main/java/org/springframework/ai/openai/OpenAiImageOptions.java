@@ -16,11 +16,11 @@
 
 package org.springframework.ai.openai;
 
-import java.util.Objects;
-
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
-
+import java.util.Map;
+import java.util.Objects;
 import org.springframework.ai.image.ImageOptions;
 import org.springframework.core.io.Resource;
 
@@ -121,6 +121,9 @@ public class OpenAiImageOptions implements ImageOptions {
 	 * image field names.
 	 */
 	private String imageFieldName;
+
+	@JsonIgnore
+	private Map<String, String> httpHeaders;
 
 	public static Builder builder() {
 		return new Builder();
@@ -292,6 +295,15 @@ public class OpenAiImageOptions implements ImageOptions {
 				// If parsing fails, leave width and height unchanged
 			}
 		}
+	}
+
+	@Override
+	public Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	public void setHttpHeaders(Map<String, String> httpHeaders) {
+		this.httpHeaders = httpHeaders;
 	}
 
 	@Override

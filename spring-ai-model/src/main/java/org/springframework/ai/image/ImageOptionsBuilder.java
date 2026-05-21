@@ -16,6 +16,9 @@
 
 package org.springframework.ai.image;
 
+import java.util.HashMap;
+import java.util.Map;
+
 public final class ImageOptionsBuilder {
 
 	private final DefaultImageModelOptions options = new DefaultImageModelOptions();
@@ -58,6 +61,11 @@ public final class ImageOptionsBuilder {
 		return this;
 	}
 
+	public ImageOptionsBuilder httpHeaders(Map<String, String> httpHeaders) {
+		this.options.setHttpHeaders(httpHeaders);
+		return this;
+	}
+
 	public ImageOptions build() {
 		return this.options;
 	}
@@ -75,6 +83,8 @@ public final class ImageOptionsBuilder {
 		private String responseFormat;
 
 		private String style;
+
+		private Map<String, String> httpHeaders = new HashMap<>();
 
 		@Override
 		public Integer getN() {
@@ -128,6 +138,15 @@ public final class ImageOptionsBuilder {
 
 		public void setStyle(String style) {
 			this.style = style;
+		}
+
+		@Override
+		public Map<String, String> getHttpHeaders() {
+			return this.httpHeaders;
+		}
+
+		public void setHttpHeaders(Map<String, String> httpHeaders) {
+			this.httpHeaders = httpHeaders;
 		}
 
 	}

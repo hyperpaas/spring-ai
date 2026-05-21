@@ -16,6 +16,7 @@
 
 package org.springframework.ai.stabilityai;
 
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 import org.springframework.ai.image.ImageOptions;
@@ -143,6 +144,11 @@ public class StabilityAiImageOptionsTests {
 			@Override
 			public String getStyle() {
 				return null;
+			}
+
+			@Override
+			public Map<String, String> getHttpHeaders() {
+				return Map.of();
 			}
 		};
 

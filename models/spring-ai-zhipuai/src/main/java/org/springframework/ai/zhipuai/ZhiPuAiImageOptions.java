@@ -16,6 +16,7 @@
 
 package org.springframework.ai.zhipuai;
 
+import java.util.Map;
 import java.util.Objects;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -62,6 +63,9 @@ public class ZhiPuAiImageOptions implements ImageOptions {
 	 */
 	@JsonProperty("user_id")
 	private String user;
+
+	@JsonIgnore
+	private Map<String, String> httpHeaders;
 
 	public static Builder builder() {
 		return new Builder();
@@ -112,6 +116,15 @@ public class ZhiPuAiImageOptions implements ImageOptions {
 
 	public void setUser(String user) {
 		this.user = user;
+	}
+
+	@Override
+	public Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	public void setHttpHeaders(Map<String, String> httpHeaders) {
+		this.httpHeaders = httpHeaders;
 	}
 
 	@Override

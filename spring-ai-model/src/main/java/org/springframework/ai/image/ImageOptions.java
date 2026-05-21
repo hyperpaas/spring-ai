@@ -16,6 +16,7 @@
 
 package org.springframework.ai.image;
 
+import java.util.Map;
 import org.springframework.ai.model.ModelOptions;
 import org.springframework.lang.Nullable;
 
@@ -42,5 +43,8 @@ public interface ImageOptions extends ModelOptions {
 
 	@Nullable
 	String getStyle();
+
+	@Nullable
+	Map<String, String> getHttpHeaders();
 
 }

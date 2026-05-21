@@ -16,11 +16,17 @@
 
 package org.springframework.ai.image;
 
+import java.util.Map;
 import org.springframework.ai.model.Model;
 
 @FunctionalInterface
 public interface ImageModel extends Model<ImagePrompt, ImageResponse> {
 
 	ImageResponse call(ImagePrompt request);
+
+	default ImageResponse call(ImagePrompt request, Map<String, Object> context) {
+		// 默认忽略 context
+		return call(request);
+	}
 
 }

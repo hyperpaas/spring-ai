@@ -1,5 +1,7 @@
 package org.springframework.ai.video;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.jetbrains.annotations.Nullable;
 
 /**
@@ -37,6 +39,11 @@ public final class VideoOptionsBuilder {
 		return this;
 	}
 
+	public VideoOptionsBuilder httpHeaders(Map<String, String> httpHeaders) {
+		this.options.setHttpHeaders(httpHeaders);
+		return this;
+	}
+
 	public VideoOptions build() {
 		return this.options;
 	}
@@ -50,6 +57,8 @@ public final class VideoOptionsBuilder {
 		private String ratio;
 
 		private String resolution;
+
+		private Map<String, String> httpHeaders = new HashMap<>();
 
 		@Nullable
 		@Override
@@ -75,6 +84,12 @@ public final class VideoOptionsBuilder {
 			return this.resolution;
 		}
 
+		@Nullable
+		@Override
+		public Map<String, String> getHttpHeaders() {
+			return this.httpHeaders;
+		}
+
 		public void setModel(String model) {
 			this.model = model;
 		}
@@ -89,6 +104,10 @@ public final class VideoOptionsBuilder {
 
 		public void setResolution(String resolution) {
 			this.resolution = resolution;
+		}
+
+		public void setHttpHeaders(Map<String, String> httpHeaders) {
+			this.httpHeaders = httpHeaders;
 		}
 
 	}
