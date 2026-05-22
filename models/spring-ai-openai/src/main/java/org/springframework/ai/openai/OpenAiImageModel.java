@@ -264,6 +264,10 @@ public class OpenAiImageModel implements ImageModel {
 			requestOptions.setImageFieldName(DEFAULT_IMAGE_FIELD_NAME);
 		}
 
+		if (!CollectionUtils.isEmpty(runtimeOptions.getHttpHeaders())) {
+			requestOptions.setHttpHeaders(runtimeOptions.getHttpHeaders());
+		}
+
 		return new ImagePrompt(imagePrompt.getInstructions(), requestOptions);
 	}
 
