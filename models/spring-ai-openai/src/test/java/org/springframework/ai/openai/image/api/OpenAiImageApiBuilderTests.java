@@ -172,12 +172,12 @@ class OpenAiImageApiBuilderTests {
 
 			OpenAiImageApi.OpenAiImageRequest request = new OpenAiImageApi.OpenAiImageRequest("Test",
 					OpenAiImageApi.ImageModel.DALL_E_3.getValue());
-			ResponseEntity<OpenAiImageApi.OpenAiImageResponse> response = api.createImage(request);
+			ResponseEntity<OpenAiImageApi.OpenAiImageResponse> response = api.createImage(request, null);
 			assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 			RecordedRequest recordedRequest = this.mockWebServer.takeRequest();
 			assertThat(recordedRequest.getHeader(HttpHeaders.AUTHORIZATION)).isEqualTo("Bearer key1");
 
-			response = api.createImage(request);
+			response = api.createImage(request, null);
 			assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
 			recordedRequest = this.mockWebServer.takeRequest();

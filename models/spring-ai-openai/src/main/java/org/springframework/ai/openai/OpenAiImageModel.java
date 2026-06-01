@@ -16,9 +16,12 @@
 
 package org.springframework.ai.openai;
 
+import java.util.HashMap;
 import java.util.List;
 
 import io.micrometer.observation.ObservationRegistry;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -40,11 +43,13 @@ import org.springframework.ai.openai.api.OpenAiImageApi;
 import org.springframework.ai.openai.api.common.OpenAiApiConstants;
 import org.springframework.ai.openai.metadata.OpenAiImageGenerationMetadata;
 import org.springframework.ai.retry.RetryUtils;
+import org.springframework.ai.video.VideoPrompt;
 import org.springframework.core.io.Resource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.retry.support.RetryTemplate;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.MultiValueMap;
 import org.springframework.util.StringUtils;
 
 /**
@@ -152,7 +157,7 @@ public class OpenAiImageModel implements ImageModel {
 					this.observationRegistry)
 			.observe(() -> {
 				ResponseEntity<OpenAiImageApi.OpenAiImageResponse> imageResponseEntity = this.retryTemplate
-					.execute(ctx -> executeRequest(imageRequest));
+					.execute(ctx -> executeRequest(imageRequest, getAdditionalHttpHeaders(imagePrompt)));
 
 				ImageResponse imageResponse = convertResponse(imageResponseEntity, imageRequest);
 
@@ -204,12 +209,13 @@ public class OpenAiImageModel implements ImageModel {
 		return builder.build();
 	}
 
-	private ResponseEntity<OpenAiImageApi.OpenAiImageResponse> executeRequest(Object imageRequest) {
+	private ResponseEntity<OpenAiImageApi.OpenAiImageResponse> executeRequest(Object imageRequest,
+			MultiValueMap<String, String> additionalHttpHeader) {
 		if (imageRequest instanceof OpenAiImageApi.OpenAiImageRequest request) {
-			return this.openAiImageApi.createImage(request);
+			return this.openAiImageApi.createImage(request, additionalHttpHeader);
 		}
 		if (imageRequest instanceof OpenAiImageApi.OpenAiImageEditRequest request) {
-			return this.openAiImageApi.createImageEdit(request);
+			return this.openAiImageApi.createImageEdit(request, additionalHttpHeader);
 		}
 		throw new IllegalArgumentException("Unsupported image request type: " + imageRequest.getClass());
 	}
@@ -287,6 +293,20 @@ public class OpenAiImageModel implements ImageModel {
 	public void setObservationConvention(ImageModelObservationConvention observationConvention) {
 		Assert.notNull(observationConvention, "observationConvention cannot be null");
 		this.observationConvention = observationConvention;
+	}
+
+	private MultiValueMap<String, String> getAdditionalHttpHeaders(ImagePrompt prompt) {
+
+		Map<String, String> headers = new HashMap<>();
+		if (this.defaultOptions.getHttpHeaders() != null) {
+			headers.putAll(this.defaultOptions.getHttpHeaders());
+		}
+		if (prompt.getOptions().getHttpHeaders() != null) {
+			headers.putAll(prompt.getOptions().getHttpHeaders());
+		}
+
+		return CollectionUtils.toMultiValueMap(
+				headers.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, e -> List.of(e.getValue()))));
 	}
 
 }

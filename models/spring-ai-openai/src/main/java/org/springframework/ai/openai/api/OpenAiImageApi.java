@@ -102,19 +102,22 @@ public class OpenAiImageApi {
 		this.objectMapper = new ObjectMapper();
 	}
 
-	public ResponseEntity<OpenAiImageResponse> createImage(OpenAiImageRequest openAiImageRequest) {
+	public ResponseEntity<OpenAiImageResponse> createImage(OpenAiImageRequest openAiImageRequest,
+			MultiValueMap<String, String> additionalHttpHeader) {
 		Assert.notNull(openAiImageRequest, "Image request cannot be null.");
 		Assert.hasLength(openAiImageRequest.prompt(), "Prompt cannot be empty.");
 
 		return this.restClient.post()
 			.uri(this.imagesPath)
+			.headers(h -> h.addAll(additionalHttpHeader))
 			.body(openAiImageRequest)
 			.contentType(MediaType.APPLICATION_JSON)
 			.retrieve()
 			.toEntity(OpenAiImageResponse.class);
 	}
 
-	public ResponseEntity<OpenAiImageResponse> createImageEdit(OpenAiImageEditRequest openAiImageEditRequest) {
+	public ResponseEntity<OpenAiImageResponse> createImageEdit(OpenAiImageEditRequest openAiImageEditRequest,
+			MultiValueMap<String, String> additionalHttpHeader) {
 		Assert.notNull(openAiImageEditRequest, "Image request cannot be null.");
 		Assert.hasLength(openAiImageEditRequest.prompt(), "Prompt cannot be empty.");
 		Assert.notEmpty(openAiImageEditRequest.image(), "Image cannot be empty.");
@@ -180,6 +183,7 @@ public class OpenAiImageApi {
 
 		ResponseEntity<String> rawResponse = this.restClient.post()
 			.uri(this.imageEditPath)
+			.headers(h -> h.addAll(additionalHttpHeader))
 			.body(multipartBody)
 			.contentType(MediaType.MULTIPART_FORM_DATA)
 			.retrieve()

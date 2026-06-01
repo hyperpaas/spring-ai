@@ -246,7 +246,7 @@ public class OpenAiRetryTests {
 
 		var expectedResponse = new OpenAiImageResponse(678L, List.of(new Data("url678", "b64", "prompt")));
 
-		given(this.openAiImageApi.createImage(isA(OpenAiImageRequest.class)))
+		given(this.openAiImageApi.createImage(isA(OpenAiImageRequest.class), null))
 			.willThrow(new TransientAiException("Transient Error 1"))
 			.willThrow(new TransientAiException("Transient Error 2"))
 			.willReturn(ResponseEntity.of(Optional.of(expectedResponse)));
@@ -262,7 +262,7 @@ public class OpenAiRetryTests {
 
 	@Test
 	public void openAiImageNonTransientError() {
-		given(this.openAiImageApi.createImage(isA(OpenAiImageRequest.class)))
+		given(this.openAiImageApi.createImage(isA(OpenAiImageRequest.class), null))
 			.willThrow(new RuntimeException("Transient Error 1"));
 		assertThrows(RuntimeException.class, () -> this.imageModel
 			.call(new ImagePrompt(List.of(new ImageMessage("Image Message")), ImageOptionsBuilder.builder().build())));
