@@ -16,14 +16,18 @@
 
 package org.springframework.ai.openai.image;
 
+import java.lang.reflect.Method;
+import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImageOptionsBuilder;
 import org.springframework.ai.image.ImagePrompt;
 import org.springframework.ai.openai.OpenAiImageOptions;
+import org.springframework.core.io.ByteArrayResource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -56,6 +60,13 @@ class OpenAiImageOptionsTests {
 	}
 
 	@Test
+	void legacyModelBuilderMethodKeepsConcreteReturnDescriptor() throws NoSuchMethodException {
+		Method modelMethod = OpenAiImageOptions.Builder.class.getDeclaredMethod("model", String.class);
+
+		assertThat(modelMethod.getReturnType()).isEqualTo(OpenAiImageOptions.Builder.class);
+	}
+
+	@Test
 	void customHeadersArePropagatedToImageGenerateParams() {
 		OpenAiImageOptions options = OpenAiImageOptions.builder()
 			.model("gpt-image-1")
@@ -85,6 +96,73 @@ class OpenAiImageOptionsTests {
 		assertThat(mergedOptions.getCustomHeaders()).containsEntry("default-header", "default-value")
 			.containsEntry("merged-header1", "merged-value1")
 			.containsEntry("merged-header2", "merged-value2");
+	}
+
+	@Test
+	void requestHeadersAreMergedWithoutEmptyOptionsClearingDefaults() {
+		OpenAiImageOptions defaultOptions = OpenAiImageOptions.builder()
+			.httpHeaders(Map.of("default-header", "default-value", "shared-header", "default-value"))
+			.build();
+
+		OpenAiImageOptions mergedWithEmptyOptions = OpenAiImageOptions.builder()
+			.from(defaultOptions)
+			.merge(ImageOptionsBuilder.builder().build())
+			.build();
+		OpenAiImageOptions mergedWithRequestOptions = OpenAiImageOptions.builder()
+			.from(defaultOptions)
+			.merge(ImageOptionsBuilder.builder()
+				.httpHeaders(Map.of("request-header", "request-value", "shared-header", "request-value"))
+				.build())
+			.build();
+
+		assertThat(mergedWithEmptyOptions.getHttpHeaders()).containsExactlyInAnyOrderEntriesOf(
+				Map.of("default-header", "default-value", "shared-header", "default-value"));
+		assertThat(mergedWithRequestOptions.getHttpHeaders()).containsEntry("default-header", "default-value")
+			.containsEntry("request-header", "request-value")
+			.containsEntry("shared-header", "request-value");
+	}
+
+	@Test
+	void imageEditParamsPreserveFilesHeadersAndOptions() {
+		Media sourceImage = Media.builder()
+			.mimeType(Media.Format.IMAGE_PNG)
+			.name("source")
+			.data(new byte[] { 1, 2, 3 })
+			.build();
+		ByteArrayResource mask = new ByteArrayResource(new byte[] { 4, 5, 6 }) {
+			@Override
+			public String getFilename() {
+				return "edit-mask";
+			}
+		};
+		OpenAiImageOptions options = OpenAiImageOptions.builder()
+			.model("gpt-image-1")
+			.n(2)
+			.size("1024x1024")
+			.responseFormat("b64_json")
+			.mask(mask)
+			.httpHeaders(Map.of("x-request-id", "request-123"))
+			.build();
+
+		var params = options.toOpenAiImageEditParams(new ImagePrompt(List.of(sourceImage), "add flowers", options));
+
+		assertThat(options.getImageFieldName()).isEqualTo(OpenAiImageOptions.DEFAULT_IMAGE_FIELD_NAME);
+		assertThat(params._image().filename()).contains("source.png");
+		assertThat(params._image().contentType()).isEqualTo("image/png");
+		assertThat(params._mask().filename()).contains("edit-mask.png");
+		assertThat(params._additionalHeaders().values("x-request-id")).containsExactly("request-123");
+		assertThat(params.n()).contains(2L);
+		assertThat(params.size()).hasValueSatisfying(size -> assertThat(size.toString()).isEqualTo("1024x1024"));
+	}
+
+	@Test
+	void customImageFieldNameIsPassedAsInternalTransportHeader() {
+		Media sourceImage = Media.builder().mimeType(Media.Format.IMAGE_PNG).data(new byte[] { 1, 2, 3 }).build();
+		OpenAiImageOptions options = OpenAiImageOptions.builder().imageFieldName("source_image").build();
+
+		var params = options.toOpenAiImageEditParams(new ImagePrompt(List.of(sourceImage), "add flowers", options));
+
+		assertThat(params._additionalHeaders().values("X-Spring-Ai-Image-Field-Name")).containsExactly("source_image");
 	}
 
 }

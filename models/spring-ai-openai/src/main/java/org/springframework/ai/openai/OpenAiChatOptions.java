@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import com.fasterxml.jackson.annotation.JsonAnyGetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.openai.azure.AzureOpenAIServiceVersion;
 import com.openai.credential.Credential;
 import com.openai.models.ChatModel;
@@ -127,6 +129,11 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 	 */
 	private final @Nullable Map<String, String> customHeaders;
 
+	/**
+	 * Request-specific HTTP headers to add to chat completion requests.
+	 */
+	private Map<String, String> httpHeaders;
+
 	private final @Nullable Double frequencyPenalty;
 
 	private final @Nullable Map<String, Integer> logitBias;
@@ -203,7 +210,8 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 			@Nullable StreamOptions streamOptions, @Nullable Integer seed, @Nullable Object toolChoice,
 			@Nullable String user, @Nullable Boolean parallelToolCalls, @Nullable Boolean store,
 			@Nullable Map<String, String> metadata, @Nullable String reasoningEffort, @Nullable String verbosity,
-			@Nullable String serviceTier, @Nullable String promptCacheKey, @Nullable Map<String, Object> extraBody) {
+			@Nullable String serviceTier, @Nullable String promptCacheKey, @Nullable Map<String, Object> extraBody,
+			@Nullable Map<String, String> httpHeaders) {
 		this.baseUrl = baseUrl;
 		this.apiKey = apiKey;
 		this.credential = credential;
@@ -217,6 +225,7 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 		this.maxRetries = (maxRetries != null ? maxRetries : AbstractOpenAiOptions.DEFAULT_MAX_RETRIES);
 		this.proxy = proxy;
 		this.customHeaders = (customHeaders != null ? Map.copyOf(customHeaders) : null);
+		this.httpHeaders = (httpHeaders != null ? Map.copyOf(httpHeaders) : Map.of());
 		// ChatOptions
 		this.frequencyPenalty = frequencyPenalty;
 		this.maxTokens = maxTokens;
@@ -312,6 +321,22 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 
 	public @Nullable Map<String, String> getCustomHeaders() {
 		return this.customHeaders;
+	}
+
+	/**
+	 * Gets request-specific HTTP headers.
+	 * @return the request-specific HTTP headers
+	 */
+	public Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	/**
+	 * Sets request-specific HTTP headers.
+	 * @param httpHeaders the request-specific HTTP headers
+	 */
+	public void setHttpHeaders(@Nullable Map<String, String> httpHeaders) {
+		this.httpHeaders = (httpHeaders != null ? Map.copyOf(httpHeaders) : Map.of());
 	}
 
 	@Override
@@ -504,7 +529,18 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 		return this.promptCacheKey;
 	}
 
+	@JsonIgnore
 	public @Nullable Map<String, Object> getExtraBody() {
+		return this.extraBody;
+	}
+
+	/**
+	 * Return provider-specific body properties as top-level JSON properties. This method
+	 * retains the 1.1.x serialization contract used by OpenAI-compatible servers.
+	 * @return provider-specific body properties, or {@code null}
+	 */
+	@JsonAnyGetter
+	public @Nullable Map<String, Object> extraBody() {
 		return this.extraBody;
 	}
 
@@ -550,6 +586,7 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 			.maxRetries(this.getMaxRetries())
 			.proxy(this.getProxy())
 			.customHeaders(this.getCustomHeaders())
+			.httpHeaders(this.getHttpHeaders())
 			// ChatOptions
 			.frequencyPenalty(this.frequencyPenalty)
 			.maxTokens(this.maxTokens)
@@ -613,6 +650,7 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 				&& Objects.equals(this.serviceTier, options.serviceTier)
 				&& Objects.equals(this.promptCacheKey, options.promptCacheKey)
 				&& Objects.equals(this.extraBody, options.extraBody)
+				&& Objects.equals(this.httpHeaders, options.httpHeaders)
 				&& Objects.equals(this.toolCallbacks, options.toolCallbacks)
 				&& Objects.equals(this.toolContext, options.toolContext);
 	}
@@ -624,7 +662,7 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 				this.presencePenalty, this.responseFormat, this.streamOptions, this.seed, this.stop, this.temperature,
 				this.topP, this.toolChoice, this.user, this.parallelToolCalls, this.store, this.metadata,
 				this.reasoningEffort, this.verbosity, this.serviceTier, this.promptCacheKey, this.extraBody,
-				this.toolCallbacks, this.toolContext);
+				this.httpHeaders, this.toolCallbacks, this.toolContext);
 	}
 
 	public record AudioParameters(@Nullable Voice voice, @Nullable AudioResponseFormat format) {
@@ -719,6 +757,16 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 	// parameters.
 	public static class Builder extends AbstractBuilder<Builder> {
 
+		@Override
+		public Builder httpHeaders(@Nullable Map<String, String> httpHeaders) {
+			return super.httpHeaders(httpHeaders);
+		}
+
+		@Override
+		public Builder extraBody(@Nullable Map<String, Object> extraBody) {
+			return super.extraBody(extraBody);
+		}
+
 	}
 
 	protected abstract static class AbstractBuilder<B extends AbstractBuilder<B>>
@@ -759,6 +807,8 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 		protected @Nullable Proxy proxy;
 
 		protected @Nullable Map<String, String> customHeaders;
+
+		protected @Nullable Map<String, String> httpHeaders;
 
 		// OpenAI SDK specific fields
 		protected @Nullable Map<String, Integer> logitBias;
@@ -895,6 +945,16 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 
 		public B customHeaders(@Nullable Map<String, String> customHeaders) {
 			this.customHeaders = customHeaders;
+			return self();
+		}
+
+		/**
+		 * Sets request-specific HTTP headers.
+		 * @param httpHeaders the request-specific HTTP headers
+		 * @return this builder
+		 */
+		public B httpHeaders(@Nullable Map<String, String> httpHeaders) {
+			this.httpHeaders = httpHeaders;
 			return self();
 		}
 
@@ -1159,6 +1219,16 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 						this.customHeaders = merged;
 					}
 				}
+				if (that.httpHeaders != null) {
+					if (this.httpHeaders == null) {
+						this.httpHeaders = new HashMap<>(that.httpHeaders);
+					}
+					else {
+						Map<String, String> merged = new HashMap<>(this.httpHeaders);
+						merged.putAll(that.httpHeaders);
+						this.httpHeaders = merged;
+					}
+				}
 				if (that.timeout != null) {
 					this.timeout = that.timeout;
 				}
@@ -1179,7 +1249,7 @@ public class OpenAiChatOptions implements ToolCallingChatOptions, StructuredOutp
 					this.topLogprobs, this.maxCompletionTokens, this.n, this.outputModalities, this.outputAudio,
 					this.responseFormat, this.streamOptions, this.seed, this.toolChoice, this.user,
 					this.parallelToolCalls, this.store, this.metadata, this.reasoningEffort, this.verbosity,
-					this.serviceTier, this.promptCacheKey, this.extraBody);
+					this.serviceTier, this.promptCacheKey, this.extraBody, this.httpHeaders);
 		}
 
 	}

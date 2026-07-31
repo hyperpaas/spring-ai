@@ -22,6 +22,7 @@ import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.model.ModelRequest;
 
 public class ImagePrompt implements ModelRequest<List<ImageMessage>> {
@@ -47,8 +48,27 @@ public class ImagePrompt implements ModelRequest<List<ImageMessage>> {
 		this(new ImageMessage(instructions), imageOptions);
 	}
 
+	/**
+	 * Create an image editing prompt.
+	 * @param image the source images
+	 * @param instructions the editing instructions
+	 * @param imageOptions the image model options
+	 */
+	public ImagePrompt(List<Media> image, String instructions, ImageOptions imageOptions) {
+		this(new ImageMessage(instructions, image), imageOptions);
+	}
+
 	public ImagePrompt(String instructions) {
 		this(new ImageMessage(instructions), ImageOptionsBuilder.builder().build());
+	}
+
+	/**
+	 * Create an image editing prompt using default options.
+	 * @param image the source images
+	 * @param instructions the editing instructions
+	 */
+	public ImagePrompt(List<Media> image, String instructions) {
+		this(new ImageMessage(instructions, image), ImageOptionsBuilder.builder().build());
 	}
 
 	@Override

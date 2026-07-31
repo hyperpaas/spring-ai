@@ -40,6 +40,7 @@ import tools.jackson.databind.cfg.DateTimeFeature;
 import tools.jackson.databind.json.JsonMapper;
 import tools.jackson.databind.node.ObjectNode;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.document.Document;
 import org.springframework.ai.document.DocumentMetadata;
 import org.springframework.ai.embedding.EmbeddingModel;
@@ -153,10 +154,7 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 			SimilarityFunction.cosine, VectorStoreSimilarityMetric.COSINE, SimilarityFunction.l2_norm,
 			VectorStoreSimilarityMetric.EUCLIDEAN, SimilarityFunction.dot_product, VectorStoreSimilarityMetric.DOT);
 
-	private final JsonMapper jsonMapper = JsonMapper.builder()
-		.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
-		.enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
-		.build();
+	private final JsonMapper jsonMapper;
 
 	private final ElasticsearchClient elasticsearchClient;
 
@@ -174,6 +172,7 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 		this.initializeSchema = builder.initializeSchema;
 		this.options = builder.options;
 		this.filterExpressionConverter = builder.filterExpressionConverter;
+		this.jsonMapper = builder.jsonMapper;
 
 		String version = Version.VERSION == null ? "Unknown" : Version.VERSION.toString();
 		this.elasticsearchClient = new ElasticsearchClient(
@@ -279,13 +278,20 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 
 	}
 
-	private Document toDocument(Hit<ObjectNode> hit) {
+	Document toDocument(Hit<ObjectNode> hit) {
 		ObjectNode source = hit.source();
 		Assert.notNull(source, "source unexpectedly null");
 		Assert.notNull(source.get("id"), "id must not be null");
 		String id = source.get("id").asString();
 		Assert.notNull(id, "id must not be null");
-		String content = source.has("content") ? source.get("content").asString() : null;
+		tools.jackson.databind.JsonNode contentNode = source.has("content") ? source.get("content")
+				: source.get("text");
+		String content = contentNode != null && !contentNode.isNull() ? contentNode.asString() : null;
+		Media media = null;
+		tools.jackson.databind.JsonNode mediaNode = source.get("media");
+		if (mediaNode != null && !mediaNode.isNull()) {
+			media = this.jsonMapper.convertValue(mediaNode, Media.class);
+		}
 		Map<String, Object> metadata = new HashMap<>();
 		if (source.has("metadata")) {
 			tools.jackson.databind.JsonNode metadataNode = source.get("metadata");
@@ -295,7 +301,13 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 			metadata.putAll(extractedMetadata);
 		}
 
-		Document.Builder documentBuilder = Document.builder().id(id).text(content).metadata(metadata);
+		Document.Builder documentBuilder = Document.builder().id(id).metadata(metadata);
+		if (media != null) {
+			documentBuilder.media(media);
+		}
+		else {
+			documentBuilder.text(content);
+		}
 		if (hit.score() != null) {
 			double normalizedScore = normalizeSimilarityScore(hit.score());
 			documentBuilder.metadata(DocumentMetadata.DISTANCE.value(), 1 - normalizedScore);
@@ -405,6 +417,11 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 
 		private FilterExpressionConverter filterExpressionConverter = new ElasticsearchAiSearchFilterExpressionConverter();
 
+		private JsonMapper jsonMapper = JsonMapper.builder()
+			.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+			.enable(DateTimeFeature.WRITE_DATES_AS_TIMESTAMPS)
+			.build();
+
 		/**
 		 * Sets the Elasticsearch REST client.
 		 * @param restClient the Elasticsearch REST client
@@ -447,6 +464,18 @@ public class ElasticsearchVectorStore extends AbstractObservationVectorStore imp
 		public Builder filterExpressionConverter(FilterExpressionConverter converter) {
 			Assert.notNull(converter, "filterExpressionConverter must not be null");
 			this.filterExpressionConverter = converter;
+			return this;
+		}
+
+		/**
+		 * Sets the JSON mapper used by the Elasticsearch client.
+		 * @param jsonMapper the JSON mapper to use
+		 * @return the builder instance
+		 * @throws IllegalArgumentException if jsonMapper is null
+		 */
+		public Builder jsonMapper(JsonMapper jsonMapper) {
+			Assert.notNull(jsonMapper, "jsonMapper must not be null");
+			this.jsonMapper = jsonMapper;
 			return this;
 		}
 

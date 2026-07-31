@@ -17,6 +17,7 @@
 package org.springframework.ai.image;
 
 import org.springframework.ai.model.MutableResponseMetadata;
+import org.springframework.ai.usage.Usage;
 
 /**
  * Represents metadata associated with an image response. It provides additional
@@ -31,16 +32,31 @@ public class ImageResponseMetadata extends MutableResponseMetadata {
 
 	private final Long created;
 
+	private final Usage usage;
+
 	public ImageResponseMetadata() {
-		this(System.currentTimeMillis());
+		this(System.currentTimeMillis(), Usage.EMPTY);
 	}
 
 	public ImageResponseMetadata(Long created) {
+		this(created, Usage.EMPTY);
+	}
+
+	public ImageResponseMetadata(Usage usage) {
+		this(System.currentTimeMillis(), usage);
+	}
+
+	public ImageResponseMetadata(Long created, Usage usage) {
 		this.created = created;
+		this.usage = usage;
 	}
 
 	public Long getCreated() {
 		return this.created;
+	}
+
+	public Usage getUsage() {
+		return this.usage;
 	}
 
 }

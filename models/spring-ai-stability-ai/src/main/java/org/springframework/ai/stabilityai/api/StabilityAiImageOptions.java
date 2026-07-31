@@ -16,6 +16,7 @@
 
 package org.springframework.ai.stabilityai.api;
 
+import java.util.Map;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
@@ -274,6 +275,8 @@ public class StabilityAiImageOptions implements ImageOptions {
 	 */
 	private final @Nullable String stylePreset;
 
+	private @Nullable Map<String, String> httpHeaders;
+
 	protected StabilityAiImageOptions(@Nullable Integer n, @Nullable String model, @Nullable Integer width,
 			@Nullable Integer height, @Nullable String responseFormat, @Nullable Float cfgScale,
 			@Nullable String clipGuidancePreset, @Nullable String sampler, @Nullable Long seed, @Nullable Integer steps,
@@ -343,6 +346,15 @@ public class StabilityAiImageOptions implements ImageOptions {
 
 	public @Nullable String getStylePreset() {
 		return this.stylePreset;
+	}
+
+	@Override
+	public @Nullable Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	public void setHttpHeaders(@Nullable Map<String, String> httpHeaders) {
+		this.httpHeaders = httpHeaders;
 	}
 
 	@Override

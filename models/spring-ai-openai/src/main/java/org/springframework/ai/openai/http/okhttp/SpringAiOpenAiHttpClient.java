@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.Proxy;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -91,6 +92,8 @@ import org.jspecify.annotations.Nullable;
  * @since 2.0.0
  */
 public final class SpringAiOpenAiHttpClient implements HttpClient {
+
+	private static final String IMAGE_FIELD_NAME_HEADER = "X-Spring-Ai-Image-Field-Name";
 
 	private final OkHttpClient okHttpClient;
 
@@ -188,15 +191,19 @@ public final class SpringAiOpenAiHttpClient implements HttpClient {
 	}
 
 	private static Request toRequestWithStainlessHeaders(HttpRequest request, OkHttpClient client) {
-		RequestBody body = toOkHttpRequestBody(request.body());
+		Headers headers = request.headers();
+		String imageFieldName = headers.values(IMAGE_FIELD_NAME_HEADER).stream().findFirst().orElse(null);
+		RequestBody body = toOkHttpRequestBody(request.body(), imageFieldName);
 		if (body == null && requiresBody(request.method())) {
 			body = RequestBody.create("", null);
 		}
 
 		Request.Builder builder = new Request.Builder().url(request.url()).method(request.method().name(), body);
 
-		Headers headers = request.headers();
 		for (String name : headers.names()) {
+			if (IMAGE_FIELD_NAME_HEADER.equalsIgnoreCase(name)) {
+				continue;
+			}
 			for (String value : headers.values(name)) {
 				builder.addHeader(name, value);
 			}
@@ -249,6 +256,11 @@ public final class SpringAiOpenAiHttpClient implements HttpClient {
 	}
 
 	private static @Nullable RequestBody toOkHttpRequestBody(@Nullable HttpRequestBody source) {
+		return toOkHttpRequestBody(source, null);
+	}
+
+	private static @Nullable RequestBody toOkHttpRequestBody(@Nullable HttpRequestBody source,
+			@Nullable String imageFieldName) {
 		if (source == null) {
 			return null;
 		}
@@ -264,7 +276,7 @@ public final class SpringAiOpenAiHttpClient implements HttpClient {
 
 			@Override
 			public long contentLength() {
-				return length;
+				return imageFieldName == null ? length : -1L;
 			}
 
 			@Override
@@ -274,9 +286,28 @@ public final class SpringAiOpenAiHttpClient implements HttpClient {
 
 			@Override
 			public void writeTo(BufferedSink sink) throws IOException {
-				source.writeTo(sink.outputStream());
+				if (imageFieldName == null) {
+					source.writeTo(sink.outputStream());
+					return;
+				}
+				String boundary = Objects.requireNonNull(mediaType).parameter("boundary");
+				if (boundary == null) {
+					throw new IOException("Cannot customize image field name without a multipart boundary");
+				}
+				String dispositionPrefix = "--" + boundary + "\r\nContent-Disposition: form-data; name=\"image[]\"";
+				String replacement = "--" + boundary + "\r\nContent-Disposition: form-data; name=\""
+						+ escapeMultipartName(imageFieldName) + "\"";
+				SequenceReplacingOutputStream outputStream = new SequenceReplacingOutputStream(sink.outputStream(),
+						dispositionPrefix.getBytes(StandardCharsets.US_ASCII),
+						replacement.getBytes(StandardCharsets.US_ASCII));
+				source.writeTo(outputStream);
+				outputStream.finish();
 			}
 		};
+	}
+
+	private static String escapeMultipartName(String name) {
+		return name.replace("\n", "%0A").replace("\r", "%0D").replace("\"", "%22");
 	}
 
 	private static HttpResponse toHttpResponse(Response response) {
@@ -611,6 +642,75 @@ public final class SpringAiOpenAiHttpClient implements HttpClient {
 			};
 			return new ThreadPoolExecutor(0, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<>(),
 					threadFactory);
+		}
+
+	}
+
+	private static final class SequenceReplacingOutputStream extends OutputStream {
+
+		private final OutputStream delegate;
+
+		private final byte[] target;
+
+		private final byte[] replacement;
+
+		private final int[] prefixLengths;
+
+		private int matched;
+
+		private SequenceReplacingOutputStream(OutputStream delegate, byte[] target, byte[] replacement) {
+			this.delegate = delegate;
+			this.target = target;
+			this.replacement = replacement;
+			this.prefixLengths = prefixLengths(target);
+		}
+
+		@Override
+		public void write(int value) throws IOException {
+			byte current = (byte) value;
+			while (this.matched > 0 && current != this.target[this.matched]) {
+				int retained = this.prefixLengths[this.matched - 1];
+				this.delegate.write(this.target, 0, this.matched - retained);
+				this.matched = retained;
+			}
+			if (current == this.target[this.matched]) {
+				this.matched++;
+				if (this.matched == this.target.length) {
+					this.delegate.write(this.replacement);
+					this.matched = 0;
+				}
+			}
+			else {
+				this.delegate.write(current);
+			}
+		}
+
+		@Override
+		public void write(byte[] bytes, int offset, int length) throws IOException {
+			for (int i = offset; i < offset + length; i++) {
+				write(bytes[i]);
+			}
+		}
+
+		private void finish() throws IOException {
+			this.delegate.write(this.target, 0, this.matched);
+			this.matched = 0;
+		}
+
+		private static int[] prefixLengths(byte[] value) {
+			int[] prefixes = new int[value.length];
+			for (int i = 1, length = 0; i < value.length;) {
+				if (value[i] == value[length]) {
+					prefixes[i++] = ++length;
+				}
+				else if (length > 0) {
+					length = prefixes[length - 1];
+				}
+				else {
+					prefixes[i++] = 0;
+				}
+			}
+			return prefixes;
 		}
 
 	}

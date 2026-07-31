@@ -16,13 +16,16 @@
 
 package org.springframework.ai.openai.chat;
 
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.JsonNode;
 
 import org.springframework.ai.chat.prompt.ChatOptions;
+import org.springframework.ai.model.ModelOptionsUtils;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.openai.OpenAiChatModel.ResponseFormat;
 import org.springframework.ai.openai.OpenAiChatOptions;
@@ -62,6 +65,7 @@ public class OpenAiChatOptionsTests extends AbstractChatOptionsTests<OpenAiChatO
 		Map<String, String> metadata = Map.of("key1", "value1");
 		Map<String, Object> toolContext = Map.of("keyA", "valueA");
 		Map<String, String> customHeaders = Map.of("header1", "value1");
+		Map<String, String> httpHeaders = Map.of("request-header", "request-value");
 		Map<String, Object> extraBody = Map.of("top_k", 50, "repetition_penalty", 1.2);
 
 		OpenAiChatOptions options = OpenAiChatOptions.builder()
@@ -89,6 +93,7 @@ public class OpenAiChatOptionsTests extends AbstractChatOptionsTests<OpenAiChatO
 			.serviceTier("auto")
 			.promptCacheKey("test-cache-key")
 			.customHeaders(customHeaders)
+			.httpHeaders(httpHeaders)
 			.toolContext(toolContext)
 			.extraBody(extraBody)
 			.build();
@@ -118,8 +123,35 @@ public class OpenAiChatOptionsTests extends AbstractChatOptionsTests<OpenAiChatO
 		assertThat(options.getServiceTier()).isEqualTo("auto");
 		assertThat(options.getPromptCacheKey()).isEqualTo("test-cache-key");
 		assertThat(options.getCustomHeaders()).isEqualTo(customHeaders);
+		assertThat(options.getHttpHeaders()).isEqualTo(httpHeaders);
 		assertThat(options.getToolContext()).isEqualTo(toolContext);
 		assertThat(options.getExtraBody()).isEqualTo(extraBody);
+	}
+
+	@Test
+	void extraBodyRetainsFlattenedJacksonSerializationContract() throws Exception {
+		OpenAiChatOptions options = OpenAiChatOptions.builder()
+			.extraBody(Map.of("top_k", 50, "repetition_penalty", 1.2))
+			.build();
+
+		JsonNode json = ModelOptionsUtils.OBJECT_MAPPER.readTree(ModelOptionsUtils.toJsonString(options));
+
+		assertThat(options.extraBody()).containsEntry("top_k", 50);
+		assertThat(json.get("top_k").asInt()).isEqualTo(50);
+		assertThat(json.get("repetition_penalty").asDouble()).isEqualTo(1.2);
+		assertThat(json.has("extraBody")).isFalse();
+		assertThat(json.has("extra_body")).isFalse();
+		assertThat(ModelOptionsUtils.getJsonPropertyResult(OpenAiChatOptions.class).acceptAllFields()).isTrue();
+	}
+
+	@Test
+	void customBuilderMethodsRetainLegacyReturnTypes() {
+		assertThat(Builder.class.getDeclaredMethods()).filteredOn(method -> method.getName().equals("httpHeaders"))
+			.extracting(Method::getReturnType)
+			.contains(Builder.class);
+		assertThat(Builder.class.getDeclaredMethods()).filteredOn(method -> method.getName().equals("extraBody"))
+			.extracting(Method::getReturnType)
+			.contains(Builder.class);
 	}
 
 	@Test
@@ -213,6 +245,7 @@ public class OpenAiChatOptionsTests extends AbstractChatOptionsTests<OpenAiChatO
 		assertThat(options.getServiceTier()).isNull();
 		assertThat(options.getToolCallbacks()).isNull();
 		assertThat(options.getCustomHeaders()).isNull();
+		assertThat(options.getHttpHeaders()).isEmpty();
 		assertThat(options.getToolContext()).isNull();
 		assertThat(options.getOutputSchema()).isNull();
 	}

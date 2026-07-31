@@ -16,6 +16,8 @@
 
 package org.springframework.ai.image;
 
+import java.util.Map;
+
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.ai.model.ModelOptions;
@@ -37,5 +39,13 @@ public interface ImageOptions extends ModelOptions {
 	@Nullable String getResponseFormat();
 
 	@Nullable String getStyle();
+
+	/**
+	 * Return request-specific HTTP headers.
+	 * @return request-specific HTTP headers, or {@code null}
+	 */
+	default @Nullable Map<String, String> getHttpHeaders() {
+		return null;
+	}
 
 }

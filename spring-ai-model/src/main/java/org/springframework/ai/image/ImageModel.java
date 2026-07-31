@@ -16,11 +16,23 @@
 
 package org.springframework.ai.image;
 
+import java.util.Map;
+
 import org.springframework.ai.model.Model;
 
 @FunctionalInterface
 public interface ImageModel extends Model<ImagePrompt, ImageResponse> {
 
 	ImageResponse call(ImagePrompt request);
+
+	/**
+	 * Generate or edit an image with additional invocation context.
+	 * @param request the image request
+	 * @param context invocation-specific context
+	 * @return the image response
+	 */
+	default ImageResponse call(ImagePrompt request, Map<String, Object> context) {
+		return call(request);
+	}
 
 }

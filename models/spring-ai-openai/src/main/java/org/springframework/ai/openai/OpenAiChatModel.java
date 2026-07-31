@@ -815,6 +815,9 @@ public final class OpenAiChatModel implements ChatModel {
 		if (requestOptions.getCustomHeaders() != null && !requestOptions.getCustomHeaders().isEmpty()) {
 			requestOptions.getCustomHeaders().forEach(builder::putAdditionalHeader);
 		}
+		if (!requestOptions.getHttpHeaders().isEmpty()) {
+			requestOptions.getHttpHeaders().forEach(builder::replaceAdditionalHeaders);
+		}
 
 		if (stream) {
 			if (requestOptions.getStreamOptions() != null) {
@@ -1010,17 +1013,16 @@ public final class OpenAiChatModel implements ChatModel {
 	}
 
 	/**
-	 * Look at the options of the provided prompt. If none are provided, return a new
-	 * prompt using this model {@link ChatModel#getOptions() options}. Otherwise, use the
-	 * prompt as is.
+	 * Merge the options of the provided prompt with this model's
+	 * {@link ChatModel#getOptions() options}. Prompt options take precedence over model
+	 * options.
 	 */
 	private Prompt buildRequestPrompt(Prompt prompt) {
-		if (prompt.getOptions() == null) {
-			return prompt.mutate().chatOptions(this.getOptions()).build();
+		OpenAiChatOptions.Builder optionsBuilder = this.getOptions().mutate();
+		if (prompt.getOptions() != null) {
+			optionsBuilder.combineWith(prompt.getOptions().mutate());
 		}
-		else {
-			return prompt;
-		}
+		return prompt.mutate().chatOptions(optionsBuilder.build()).build();
 	}
 
 	private static final class ChunkMerger {

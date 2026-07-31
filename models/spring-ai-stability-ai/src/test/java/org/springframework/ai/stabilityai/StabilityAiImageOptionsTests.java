@@ -16,6 +16,8 @@
 
 package org.springframework.ai.stabilityai;
 
+import java.util.Map;
+
 import org.junit.jupiter.api.Test;
 
 import org.springframework.ai.image.ImageOptions;
@@ -26,6 +28,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
 public class StabilityAiImageOptionsTests {
+
+	@Test
+	void httpHeadersRemainMutableForCompatibility() {
+		StabilityAiImageOptions options = StabilityAiImageOptions.builder().build();
+		Map<String, String> headers = Map.of("X-Request-Id", "request-123");
+
+		options.setHttpHeaders(headers);
+
+		assertThat(options.getHttpHeaders()).isEqualTo(headers);
+	}
 
 	@Test
 	void shouldPreferRuntimeOptionsOverDefaultOptions() {

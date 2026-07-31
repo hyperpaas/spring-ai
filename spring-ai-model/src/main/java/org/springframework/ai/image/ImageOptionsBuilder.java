@@ -16,6 +16,9 @@
 
 package org.springframework.ai.image;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import org.jspecify.annotations.Nullable;
 
 public final class ImageOptionsBuilder {
@@ -33,6 +36,15 @@ public final class ImageOptionsBuilder {
 	public ImageOptionsBuilder n(Integer n) {
 		this.options.setN(n);
 		return this;
+	}
+
+	/**
+	 * Compatibility alias for {@link #n(Integer)}.
+	 * @param n the number of images to generate
+	 * @return this builder
+	 */
+	public ImageOptionsBuilder N(Integer n) {
+		return n(n);
 	}
 
 	public ImageOptionsBuilder model(String model) {
@@ -60,6 +72,11 @@ public final class ImageOptionsBuilder {
 		return this;
 	}
 
+	public ImageOptionsBuilder httpHeaders(Map<String, String> httpHeaders) {
+		this.options.setHttpHeaders(httpHeaders);
+		return this;
+	}
+
 	public ImageOptions build() {
 		return this.options;
 	}
@@ -77,6 +94,8 @@ public final class ImageOptionsBuilder {
 		private @Nullable String responseFormat;
 
 		private @Nullable String style;
+
+		private Map<String, String> httpHeaders = new HashMap<>();
 
 		@Override
 		public @Nullable Integer getN() {
@@ -130,6 +149,15 @@ public final class ImageOptionsBuilder {
 
 		public void setStyle(String style) {
 			this.style = style;
+		}
+
+		@Override
+		public Map<String, String> getHttpHeaders() {
+			return this.httpHeaders;
+		}
+
+		public void setHttpHeaders(Map<String, String> httpHeaders) {
+			this.httpHeaders = httpHeaders;
 		}
 
 	}

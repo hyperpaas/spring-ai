@@ -22,6 +22,9 @@ import com.openai.models.images.ImagesResponse;
 import org.jspecify.annotations.Nullable;
 
 import org.springframework.ai.image.ImageResponseMetadata;
+import org.springframework.ai.usage.Usage;
+import org.springframework.ai.usage.UsageInputTokensDetails;
+import org.springframework.ai.usage.UsageOutputTokensDetails;
 import org.springframework.util.Assert;
 
 /**
@@ -38,6 +41,16 @@ public class OpenAiImageResponseMetadata extends ImageResponseMetadata {
 	 * @param created the creation timestamp
 	 */
 	protected OpenAiImageResponseMetadata(Long created) {
+		this(created, Usage.EMPTY);
+	}
+
+	/**
+	 * Creates a new OpenAiImageResponseMetadata.
+	 * @param created the creation timestamp
+	 * @param usage the token usage
+	 */
+	protected OpenAiImageResponseMetadata(Long created, Usage usage) {
+		super(created, usage);
 		this.created = created;
 	}
 
@@ -48,7 +61,32 @@ public class OpenAiImageResponseMetadata extends ImageResponseMetadata {
 	 */
 	public static OpenAiImageResponseMetadata from(ImagesResponse imagesResponse) {
 		Assert.notNull(imagesResponse, "imagesResponse must not be null");
-		return new OpenAiImageResponseMetadata(imagesResponse.created());
+		Usage usage = imagesResponse.usage().map(OpenAiImageResponseMetadata::from).orElse(Usage.EMPTY);
+		return new OpenAiImageResponseMetadata(imagesResponse.created(), usage);
+	}
+
+	private static Usage from(ImagesResponse.Usage nativeUsage) {
+		var nativeInputDetails = nativeUsage.inputTokensDetails();
+		UsageInputTokensDetails inputDetails = UsageInputTokensDetails.builder()
+			.imageTokens(Math.toIntExact(nativeInputDetails.imageTokens()))
+			.textTokens(Math.toIntExact(nativeInputDetails.textTokens()))
+			.build();
+
+		Usage.Builder usage = Usage.builder()
+			.inputTokens(Math.toIntExact(nativeUsage.inputTokens()))
+			.inputTokensDetails(inputDetails)
+			.outputTokens(Math.toIntExact(nativeUsage.outputTokens()))
+			.totalTokens(Math.toIntExact(nativeUsage.totalTokens()));
+
+		nativeUsage.outputTokensDetails().ifPresent(nativeOutputDetails -> {
+			UsageOutputTokensDetails outputDetails = UsageOutputTokensDetails.builder()
+				.imageTokens(Math.toIntExact(nativeOutputDetails.imageTokens()))
+				.textTokens(Math.toIntExact(nativeOutputDetails.textTokens()))
+				.build();
+			usage.outputTokensDetails(outputDetails);
+		});
+
+		return usage.build();
 	}
 
 	@Override
@@ -58,7 +96,7 @@ public class OpenAiImageResponseMetadata extends ImageResponseMetadata {
 
 	@Override
 	public String toString() {
-		return "OpenAiImageResponseMetadata{" + "created=" + this.created + '}';
+		return "OpenAiImageResponseMetadata{" + "created=" + this.created + ", usage=" + getUsage() + '}';
 	}
 
 	@Override
@@ -69,12 +107,12 @@ public class OpenAiImageResponseMetadata extends ImageResponseMetadata {
 		if (!(o instanceof OpenAiImageResponseMetadata that)) {
 			return false;
 		}
-		return Objects.equals(this.created, that.created);
+		return Objects.equals(this.created, that.created) && Objects.equals(getUsage(), that.getUsage());
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.created);
+		return Objects.hash(this.created, getUsage());
 	}
 
 }

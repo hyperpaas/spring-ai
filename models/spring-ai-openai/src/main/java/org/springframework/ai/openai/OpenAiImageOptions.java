@@ -16,21 +16,31 @@
 
 package org.springframework.ai.openai;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.net.Proxy;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 import com.openai.azure.AzureOpenAIServiceVersion;
+import com.openai.core.MultipartField;
 import com.openai.credential.Credential;
+import com.openai.models.images.ImageEditParams;
 import com.openai.models.images.ImageGenerateParams;
 import com.openai.models.images.ImageModel;
 import org.jspecify.annotations.Nullable;
 
+import org.springframework.ai.content.Media;
 import org.springframework.ai.image.ImageOptions;
 import org.springframework.ai.image.ImagePrompt;
+import org.springframework.core.io.Resource;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 /**
  * Configuration information for the Image Model implementation using the OpenAI Java SDK.
@@ -43,40 +53,46 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 
 	public static final String DEFAULT_IMAGE_MODEL = ImageModel.GPT_IMAGE_1_MINI.toString();
 
+	public static final String DEFAULT_IMAGE_FIELD_NAME = "image[]";
+
+	private static final String IMAGE_FIELD_NAME_HEADER = "X-Spring-Ai-Image-Field-Name";
+
 	/**
 	 * The number of images to generate. Must be between 1 and 10. For dall-e-3, only n=1
 	 * is supported.
 	 */
-	private final @Nullable Integer n;
+	private @Nullable Integer n;
+
+	private @Nullable String model;
 
 	/**
 	 * The width of the generated images. Must be one of 256, 512, or 1024 for dall-e-2.
 	 */
-	private final @Nullable Integer width;
+	private @Nullable Integer width;
 
 	/**
 	 * The height of the generated images. Must be one of 256, 512, or 1024 for dall-e-2.
 	 */
-	private final @Nullable Integer height;
+	private @Nullable Integer height;
 
 	/**
 	 * The quality of the image that will be generated. hd creates images with finer
 	 * details and greater consistency across the image. This param is only supported for
 	 * dall-e-3. standard or hd
 	 */
-	private final @Nullable String quality;
+	private @Nullable String quality;
 
 	/**
 	 * The format in which the generated images are returned. Must be one of url or
 	 * b64_json.
 	 */
-	private final @Nullable String responseFormat;
+	private @Nullable String responseFormat;
 
 	/**
 	 * The size of the generated images. Must be one of 256x256, 512x512, or 1024x1024 for
 	 * dall-e-2. Must be one of 1024x1024, 1792x1024, or 1024x1792 for dall-e-3 models.
 	 */
-	private final @Nullable String size;
+	private @Nullable String size;
 
 	/**
 	 * The style of the generated images. Must be one of vivid or natural. Vivid causes
@@ -84,13 +100,39 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 	 * the model to produce more natural, less hyper-real looking images. This param is
 	 * only supported for dall-e-3. natural or vivid
 	 */
-	private final @Nullable String style;
+	private @Nullable String style;
 
 	/**
 	 * A unique identifier representing your end-user, which can help OpenAI to monitor
 	 * and detect abuse.
 	 */
-	private final @Nullable String user;
+	private @Nullable String user;
+
+	private @Nullable Resource mask;
+
+	private @Nullable String imageFieldName;
+
+	private @Nullable Map<String, String> httpHeaders;
+
+	/**
+	 * Create image options with the OpenAI defaults. This constructor is retained for
+	 * compatibility with providers that populate options through JavaBean setters.
+	 */
+	public OpenAiImageOptions() {
+		this(new Builder());
+	}
+
+	private OpenAiImageOptions(Builder builder) {
+		this(builder.baseUrl, builder.apiKey, builder.credential, builder.model, builder.microsoftDeploymentName,
+				builder.microsoftFoundryServiceVersion, builder.organizationId, builder.isMicrosoftFoundry,
+				builder.isGitHubModels, builder.timeout, builder.maxRetries, builder.proxy, builder.customHeaders,
+				builder.n, builder.width, builder.height, builder.quality, builder.responseFormat, builder.size,
+				builder.style, builder.user);
+		this.mask = builder.mask;
+		this.imageFieldName = StringUtils.hasText(builder.imageFieldName) ? builder.imageFieldName
+				: DEFAULT_IMAGE_FIELD_NAME;
+		this.httpHeaders = builder.httpHeaders != null ? Map.copyOf(builder.httpHeaders) : null;
+	}
 
 	protected OpenAiImageOptions(@Nullable String baseUrl, @Nullable String apiKey, @Nullable Credential credential,
 			@Nullable String model, @Nullable String microsoftDeploymentName,
@@ -103,6 +145,7 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 				microsoftFoundryServiceVersion, organizationId, isMicrosoftFoundry, isGitHubModels, timeout, maxRetries,
 				proxy, customHeaders);
 		this.n = n;
+		this.model = model != null ? model : DEFAULT_IMAGE_MODEL;
 		this.width = width;
 		this.height = height;
 		this.quality = quality;
@@ -116,24 +159,74 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 		return new Builder();
 	}
 
+	/**
+	 * Create a copy of the supplied options.
+	 * @param fromOptions the options to copy
+	 * @return a new options instance
+	 */
+	public static OpenAiImageOptions fromOptions(OpenAiImageOptions fromOptions) {
+		return new Builder(fromOptions).build();
+	}
+
+	/**
+	 * Create a copy of this options instance.
+	 * @return a new options instance
+	 */
+	public OpenAiImageOptions copy() {
+		return fromOptions(this);
+	}
+
 	@Override
 	public @Nullable Integer getN() {
 		return this.n;
 	}
 
+	public void setN(@Nullable Integer n) {
+		this.n = n;
+	}
+
+	@Override
+	public @Nullable String getModel() {
+		return this.model;
+	}
+
+	public void setModel(@Nullable String model) {
+		this.model = model;
+	}
+
 	@Override
 	public @Nullable Integer getWidth() {
-		return this.width;
+		if (this.width != null) {
+			return this.width;
+		}
+		return parseDimension(this.size, 0);
+	}
+
+	public void setWidth(@Nullable Integer width) {
+		this.width = width;
+		updateSizeFromDimensions();
 	}
 
 	@Override
 	public @Nullable Integer getHeight() {
-		return this.height;
+		if (this.height != null) {
+			return this.height;
+		}
+		return parseDimension(this.size, 1);
+	}
+
+	public void setHeight(@Nullable Integer height) {
+		this.height = height;
+		updateSizeFromDimensions();
 	}
 
 	@Override
 	public @Nullable String getResponseFormat() {
 		return this.responseFormat;
+	}
+
+	public void setResponseFormat(@Nullable String responseFormat) {
+		this.responseFormat = responseFormat;
 	}
 
 	public @Nullable String getSize() {
@@ -143,17 +236,86 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 		return (this.width != null && this.height != null) ? this.width + "x" + this.height : null;
 	}
 
+	public void setSize(@Nullable String size) {
+		this.size = size;
+		Integer parsedWidth = parseDimension(size, 0);
+		Integer parsedHeight = parseDimension(size, 1);
+		if (parsedWidth != null && parsedHeight != null) {
+			this.width = parsedWidth;
+			this.height = parsedHeight;
+		}
+	}
+
 	public @Nullable String getUser() {
 		return this.user;
+	}
+
+	public void setUser(@Nullable String user) {
+		this.user = user;
 	}
 
 	public @Nullable String getQuality() {
 		return this.quality;
 	}
 
+	public void setQuality(@Nullable String quality) {
+		this.quality = quality;
+	}
+
 	@Override
 	public @Nullable String getStyle() {
 		return this.style;
+	}
+
+	public void setStyle(@Nullable String style) {
+		this.style = style;
+	}
+
+	public @Nullable Resource getMask() {
+		return this.mask;
+	}
+
+	public void setMask(@Nullable Resource mask) {
+		this.mask = mask;
+	}
+
+	public @Nullable String getImageFieldName() {
+		return this.imageFieldName;
+	}
+
+	public void setImageFieldName(@Nullable String imageFieldName) {
+		this.imageFieldName = StringUtils.hasText(imageFieldName) ? imageFieldName : DEFAULT_IMAGE_FIELD_NAME;
+	}
+
+	@Override
+	public @Nullable Map<String, String> getHttpHeaders() {
+		return this.httpHeaders;
+	}
+
+	public void setHttpHeaders(@Nullable Map<String, String> httpHeaders) {
+		this.httpHeaders = httpHeaders != null ? Map.copyOf(httpHeaders) : null;
+	}
+
+	private void updateSizeFromDimensions() {
+		if (this.width != null && this.height != null) {
+			this.size = this.width + "x" + this.height;
+		}
+	}
+
+	private static @Nullable Integer parseDimension(@Nullable String size, int index) {
+		if (size == null) {
+			return null;
+		}
+		String[] dimensions = size.split("x");
+		if (dimensions.length != 2) {
+			return null;
+		}
+		try {
+			return Integer.valueOf(dimensions[index]);
+		}
+		catch (NumberFormatException ex) {
+			return null;
+		}
 	}
 
 	@Override
@@ -162,16 +324,28 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 			return false;
 		}
 		OpenAiImageOptions that = (OpenAiImageOptions) o;
-		return Objects.equals(this.n, that.n) && Objects.equals(this.width, that.width)
-				&& Objects.equals(this.height, that.height) && Objects.equals(this.quality, that.quality)
+		return Objects.equals(this.n, that.n) && Objects.equals(this.model, that.model)
+				&& Objects.equals(this.width, that.width) && Objects.equals(this.height, that.height)
+				&& Objects.equals(this.quality, that.quality)
 				&& Objects.equals(this.responseFormat, that.responseFormat) && Objects.equals(this.size, that.size)
-				&& Objects.equals(this.style, that.style) && Objects.equals(this.user, that.user);
+				&& Objects.equals(this.style, that.style) && Objects.equals(this.user, that.user)
+				&& Objects.equals(this.mask, that.mask) && Objects.equals(this.imageFieldName, that.imageFieldName)
+				&& Objects.equals(this.httpHeaders, that.httpHeaders);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(this.n, this.width, this.height, this.quality, this.responseFormat, this.size, this.style,
-				this.user);
+		return Objects.hash(this.n, this.model, this.width, this.height, this.quality, this.responseFormat, this.size,
+				this.style, this.user, this.mask, this.imageFieldName, this.httpHeaders);
+	}
+
+	@Override
+	public String toString() {
+		return "OpenAiImageOptions{" + "n=" + this.n + ", model='" + this.model + '\'' + ", width=" + this.width
+				+ ", height=" + this.height + ", quality='" + this.quality + '\'' + ", responseFormat='"
+				+ this.responseFormat + '\'' + ", size='" + this.size + '\'' + ", style='" + this.style + '\''
+				+ ", user='" + this.user + '\'' + ", mask=" + this.mask + ", imageFieldName='" + this.imageFieldName
+				+ '\'' + '}';
 	}
 
 	public ImageGenerateParams toOpenAiImageGenerateParams(ImagePrompt imagePrompt) {
@@ -212,8 +386,106 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 		if (!CollectionUtils.isEmpty(this.getCustomHeaders())) {
 			this.getCustomHeaders().forEach(builder::putAdditionalHeader);
 		}
+		if (!CollectionUtils.isEmpty(this.getHttpHeaders())) {
+			this.getHttpHeaders().forEach(builder::putAdditionalHeader);
+		}
 
 		return builder.build();
+	}
+
+	/**
+	 * Convert these options and an editing prompt to OpenAI SDK parameters.
+	 * @param imagePrompt the image editing prompt
+	 * @return the SDK editing parameters
+	 */
+	public ImageEditParams toOpenAiImageEditParams(ImagePrompt imagePrompt) {
+		if (imagePrompt.getInstructions().isEmpty()) {
+			throw new IllegalArgumentException("Image prompt instructions cannot be empty");
+		}
+
+		List<Media> images = imagePrompt.getInstructions().get(0).getImage();
+		if (CollectionUtils.isEmpty(images)) {
+			throw new IllegalArgumentException("Image editing requires at least one source image");
+		}
+
+		List<InputStream> imageStreams = images.stream()
+			.map(Media::getDataAsByteArray)
+			.map(ByteArrayInputStream::new)
+			.map(InputStream.class::cast)
+			.toList();
+		Media firstImage = images.get(0);
+		MultipartField<ImageEditParams.Image> image = MultipartField.<ImageEditParams.Image>builder()
+			.value(ImageEditParams.Image.ofInputStreams(imageStreams))
+			.contentType(firstImage.getMimeType().toString())
+			.filename(resolveImageFilename(firstImage))
+			.build();
+		ImageEditParams.Builder builder = ImageEditParams.builder()
+			.image(image)
+			.prompt(imagePrompt.getInstructions().get(0).getText());
+
+		if (getDeploymentName() != null) {
+			builder.model(getDeploymentName());
+		}
+		else if (getModel() != null) {
+			builder.model(getModel());
+		}
+		if (getMask() != null) {
+			try {
+				String maskFilename = resolveMaskFilename(getMask());
+				MultipartField<InputStream> mask = MultipartField.<InputStream>builder()
+					.value(getMask().getInputStream())
+					.contentType("image/png")
+					.filename(maskFilename)
+					.build();
+				builder.mask(mask);
+			}
+			catch (IOException ex) {
+				throw new IllegalArgumentException("Failed to read the image edit mask", ex);
+			}
+		}
+		if (getN() != null) {
+			builder.n(getN().longValue());
+		}
+		if (getQuality() != null) {
+			builder.quality(ImageEditParams.Quality.of(getQuality().toLowerCase()));
+		}
+		if (getResponseFormat() != null) {
+			builder.responseFormat(ImageEditParams.ResponseFormat.of(getResponseFormat().toLowerCase()));
+		}
+		if (getSize() != null) {
+			builder.size(getSize());
+		}
+		if (getUser() != null) {
+			builder.user(getUser());
+		}
+		if (!CollectionUtils.isEmpty(getCustomHeaders())) {
+			getCustomHeaders().forEach(builder::putAdditionalHeader);
+		}
+		if (!CollectionUtils.isEmpty(getHttpHeaders())) {
+			getHttpHeaders().forEach(builder::putAdditionalHeader);
+		}
+		String imageFieldName = getImageFieldName();
+		if (!DEFAULT_IMAGE_FIELD_NAME.equals(imageFieldName)) {
+			Assert.hasText(imageFieldName, "Image field name must not be empty");
+			Assert.isTrue(imageFieldName.indexOf('\r') < 0 && imageFieldName.indexOf('\n') < 0,
+					"Image field name must not contain line breaks");
+			builder.replaceAdditionalHeaders(IMAGE_FIELD_NAME_HEADER, imageFieldName);
+		}
+
+		return builder.build();
+	}
+
+	private static String resolveImageFilename(Media image) {
+		String filename = image.getName();
+		if (filename.contains(".")) {
+			return filename;
+		}
+		return filename + "." + image.getMimeType().getSubtype();
+	}
+
+	private static String resolveMaskFilename(Resource mask) {
+		String filename = StringUtils.hasText(mask.getFilename()) ? mask.getFilename() : "mask";
+		return filename.contains(".") ? filename : filename + ".png";
 	}
 
 	public static final class Builder extends AbstractBuilder<OpenAiImageOptions, Builder> {
@@ -234,7 +506,17 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 
 		private @Nullable String user;
 
-		private Builder() {
+		private @Nullable Resource mask;
+
+		private @Nullable String imageFieldName;
+
+		private @Nullable Map<String, String> httpHeaders;
+
+		public Builder() {
+		}
+
+		public Builder(OpenAiImageOptions options) {
+			from(options);
 		}
 
 		public Builder from(OpenAiImageOptions fromOptions) {
@@ -261,6 +543,9 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 			this.size = fromOptions.getSize();
 			this.style = fromOptions.getStyle();
 			this.user = fromOptions.getUser();
+			this.mask = fromOptions.getMask();
+			this.imageFieldName = fromOptions.getImageFieldName();
+			this.httpHeaders = fromOptions.getHttpHeaders();
 			return this;
 		}
 
@@ -285,6 +570,13 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 			}
 			if (from.getStyle() != null) {
 				this.style = from.getStyle();
+			}
+			Map<String, String> httpHeaders = from.getHttpHeaders();
+			if (httpHeaders != null && !httpHeaders.isEmpty()) {
+				Map<String, String> merged = this.httpHeaders != null ? new HashMap<>(this.httpHeaders)
+						: new HashMap<>();
+				merged.putAll(httpHeaders);
+				this.httpHeaders = merged;
 			}
 			if (from instanceof AbstractOpenAiOptions castFrom) {
 				if (castFrom.getBaseUrl() != null) {
@@ -333,6 +625,12 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 				if (castFrom.getUser() != null) {
 					this.user = castFrom.getUser();
 				}
+				if (castFrom.getMask() != null) {
+					this.mask = castFrom.getMask();
+				}
+				if (castFrom.getImageFieldName() != null) {
+					this.imageFieldName = castFrom.getImageFieldName();
+				}
 			}
 			return this;
 		}
@@ -340,6 +638,20 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 		public Builder n(@Nullable Integer n) {
 			this.n = n;
 			return this;
+		}
+
+		@Override
+		public Builder model(@Nullable String model) {
+			return super.model(model);
+		}
+
+		/**
+		 * Compatibility alias for {@link #n(Integer)}.
+		 * @param n the number of images
+		 * @return this builder
+		 */
+		public Builder N(@Nullable Integer n) {
+			return n(n);
 		}
 
 		public Builder responseFormat(@Nullable String responseFormat) {
@@ -380,16 +692,33 @@ public class OpenAiImageOptions extends AbstractOpenAiOptions implements ImageOp
 
 		public Builder size(@Nullable String size) {
 			this.size = size;
+			Integer parsedWidth = parseDimension(size, 0);
+			Integer parsedHeight = parseDimension(size, 1);
+			if (parsedWidth != null && parsedHeight != null) {
+				this.width = parsedWidth;
+				this.height = parsedHeight;
+			}
+			return this;
+		}
+
+		public Builder mask(@Nullable Resource mask) {
+			this.mask = mask;
+			return this;
+		}
+
+		public Builder imageFieldName(@Nullable String imageFieldName) {
+			this.imageFieldName = imageFieldName;
+			return this;
+		}
+
+		public Builder httpHeaders(@Nullable Map<String, String> httpHeaders) {
+			this.httpHeaders = httpHeaders;
 			return this;
 		}
 
 		@Override
 		public OpenAiImageOptions build() {
-			return new OpenAiImageOptions(this.baseUrl, this.apiKey, this.credential, this.model,
-					this.microsoftDeploymentName, this.microsoftFoundryServiceVersion, this.organizationId,
-					this.isMicrosoftFoundry, this.isGitHubModels, this.timeout, this.maxRetries, this.proxy,
-					this.customHeaders, this.n, this.width, this.height, this.quality, this.responseFormat, this.size,
-					this.style, this.user);
+			return new OpenAiImageOptions(this);
 		}
 
 	}

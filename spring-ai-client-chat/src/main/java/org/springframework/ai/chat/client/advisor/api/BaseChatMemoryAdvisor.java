@@ -42,4 +42,19 @@ public interface BaseChatMemoryAdvisor extends BaseAdvisor, MemoryAdvisor {
 		return context.get(ChatMemory.CONVERSATION_ID).toString();
 	}
 
+	/**
+	 * Retrieve the conversation ID from the given context or return the supplied default
+	 * when it is not present.
+	 * @param context the advisor context
+	 * @param defaultConversationId the fallback conversation ID
+	 * @return the resolved conversation ID
+	 */
+	default String getConversationId(Map<String, @Nullable Object> context, String defaultConversationId) {
+		Assert.notNull(context, "context cannot be null");
+		Assert.noNullElements(context.keySet().toArray(), "context cannot contain null keys");
+		Assert.hasText(defaultConversationId, "defaultConversationId cannot be null or empty");
+		Object conversationId = context.get(ChatMemory.CONVERSATION_ID);
+		return conversationId != null ? conversationId.toString() : defaultConversationId;
+	}
+
 }
