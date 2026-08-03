@@ -510,7 +510,7 @@ public final class OpenAiChatModel implements ChatModel {
 						// Add media content parts
 						userMessage.getMedia().forEach(media -> {
 							String mimeType = media.getMimeType().toString();
-							if (mimeType.startsWith("image/")) {
+							if (mimeType.startsWith("image/") || mimeType.startsWith("video/")) {
 								if (media.getData() instanceof java.net.URI uri) {
 									parts.add(ChatCompletionContentPart
 										.ofImageUrl(ChatCompletionContentPartImage.builder()
