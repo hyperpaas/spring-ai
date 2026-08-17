@@ -38,6 +38,7 @@ import com.google.genai.types.GenerateContentConfig;
 import com.google.genai.types.GenerateContentResponse;
 import com.google.genai.types.GenerateContentResponseUsageMetadata;
 import com.google.genai.types.GoogleSearch;
+import com.google.genai.types.HttpOptions;
 import com.google.genai.types.Part;
 import com.google.genai.types.SafetySetting;
 import com.google.genai.types.Schema;
@@ -669,6 +670,9 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 
 		// Build GenerateContentConfig
 		GenerateContentConfig.Builder configBuilder = GenerateContentConfig.builder();
+		if (!CollectionUtils.isEmpty(requestOptions.getHttpHeaders())) {
+			configBuilder.httpOptions(HttpOptions.builder().headers(requestOptions.getHttpHeaders()).build());
+		}
 
 		String modelName = requestOptions.getModel() != null ? requestOptions.getModel() : this.options.getModel();
 		Assert.notNull(modelName, "Model name must not be null");

@@ -336,6 +336,22 @@ public class CreateGeminiRequestTests {
 	}
 
 	@Test
+	public void createRequestWithHttpHeaders() {
+		GoogleGenAiChatOptions options = GoogleGenAiChatOptions.builder()
+			.model("DEFAULT_MODEL")
+			.httpHeaders(Map.of("X-Request-Id", "request-123", "X-Tenant-Id", "tenant-1"))
+			.build();
+		var client = GoogleGenAiChatModel.builder().genAiClient(this.genAiClient).build();
+
+		GeminiRequest request = client.createGeminiRequest(new Prompt("Test message content", options));
+
+		assertThat(request.config().httpOptions()).isPresent();
+		assertThat(request.config().httpOptions().get().headers())
+			.hasValueSatisfying(headers -> assertThat(headers).containsEntry("X-Request-Id", "request-123")
+				.containsEntry("X-Tenant-Id", "tenant-1"));
+	}
+
+	@Test
 	public void createRequestWithThinkingLevel() {
 		GoogleGenAiChatOptions options = GoogleGenAiChatOptions.builder()
 			.model("DEFAULT_MODEL")

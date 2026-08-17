@@ -16,6 +16,7 @@
 
 package org.springframework.ai.google.genai;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -293,6 +294,7 @@ public class GoogleGenAiChatOptionsTest extends AbstractChatOptionsTests<GoogleG
 			.build();
 		GoogleGenAiChatOptions base = GoogleGenAiChatOptions.builder()
 			.labels(Map.of("base-key", "base-value"))
+			.httpHeaders(Map.of("X-Base", "base-value", "X-Shared", "base-value"))
 			.safetySettings(List.of(baseSafetySetting))
 			.build();
 
@@ -302,6 +304,7 @@ public class GoogleGenAiChatOptionsTest extends AbstractChatOptionsTests<GoogleG
 			.build();
 		GoogleGenAiChatOptions override = GoogleGenAiChatOptions.builder()
 			.labels(Map.of("override-key", "override-value"))
+			.httpHeaders(Map.of("X-Override", "override-value", "X-Shared", "override-value"))
 			.safetySettings(List.of(overrideSafetySetting))
 			.build();
 
@@ -309,7 +312,22 @@ public class GoogleGenAiChatOptionsTest extends AbstractChatOptionsTests<GoogleG
 
 		assertThat(merged.getLabels()).containsEntry("base-key", "base-value");
 		assertThat(merged.getLabels()).containsEntry("override-key", "override-value");
+		assertThat(merged.getHttpHeaders()).containsEntry("X-Base", "base-value");
+		assertThat(merged.getHttpHeaders()).containsEntry("X-Override", "override-value");
+		assertThat(merged.getHttpHeaders()).containsEntry("X-Shared", "override-value");
 		assertThat(merged.getSafetySettings()).containsExactlyInAnyOrder(baseSafetySetting, overrideSafetySetting);
+	}
+
+	@Test
+	public void testHttpHeadersWithBuilder() {
+		Map<String, String> httpHeaders = new HashMap<>();
+		httpHeaders.put("X-Request-Id", "request-123");
+
+		GoogleGenAiChatOptions options = GoogleGenAiChatOptions.builder().httpHeaders(httpHeaders).build();
+		httpHeaders.put("X-Request-Id", "changed");
+
+		assertThat(options.getHttpHeaders()).containsExactly(Map.entry("X-Request-Id", "request-123"));
+		assertThat(options.mutate().build()).isEqualTo(options);
 	}
 
 }
