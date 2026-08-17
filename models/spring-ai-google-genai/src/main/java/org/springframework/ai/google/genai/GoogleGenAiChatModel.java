@@ -44,6 +44,7 @@ import com.google.genai.types.Schema;
 import com.google.genai.types.ThinkingConfig;
 import com.google.genai.types.ThinkingLevel;
 import com.google.genai.types.Tool;
+import com.google.genai.types.VideoMetadata;
 import io.micrometer.observation.Observation;
 import io.micrometer.observation.ObservationRegistry;
 import io.micrometer.observation.contextpropagation.ObservationThreadLocalAccessor;
@@ -231,6 +232,10 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 	}
 
 	List<Part> messageToGeminiParts(Message message) {
+		return messageToGeminiParts(message, null);
+	}
+
+	private List<Part> messageToGeminiParts(Message message, @Nullable Double videoFps) {
 
 		if (message instanceof SystemMessage systemMessage) {
 
@@ -248,7 +253,7 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 				parts.add(Part.fromText(userMessage.getText()));
 			}
 
-			parts.addAll(mediaToParts(userMessage.getMedia()));
+			parts.addAll(mediaToParts(userMessage.getMedia(), videoFps));
 
 			return parts;
 		}
@@ -315,31 +320,38 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 		}
 	}
 
-	private static List<Part> mediaToParts(Collection<Media> media) {
+	private static List<Part> mediaToParts(Collection<Media> media, @Nullable Double videoFps) {
 		List<Part> parts = new ArrayList<>();
 
-		List<Part> mediaParts = media.stream().map(mediaData -> {
-			Object data = mediaData.getData();
-			String mimeType = mediaData.getMimeType().toString();
-
-			if (data instanceof byte[]) {
-				return Part.fromBytes((byte[]) data, mimeType);
-			}
-			else if (data instanceof URI || data instanceof String) {
-				// Handle URI or String URLs
-				String uri = data.toString();
-				return Part.fromUri(uri, mimeType);
-			}
-			else {
-				throw new IllegalArgumentException("Unsupported media data type: " + data.getClass());
-			}
-		}).toList();
+		List<Part> mediaParts = media.stream().map(mediaData -> mediaToPart(mediaData, videoFps)).toList();
 
 		if (!CollectionUtils.isEmpty(mediaParts)) {
 			parts.addAll(mediaParts);
 		}
 
 		return parts;
+	}
+
+	private static Part mediaToPart(Media media, @Nullable Double videoFps) {
+		Object data = media.getData();
+		String mimeType = media.getMimeType().toString();
+
+		Part part;
+		if (data instanceof byte[] bytes) {
+			part = Part.fromBytes(bytes, mimeType);
+		}
+		else if (data instanceof URI || data instanceof String) {
+			part = Part.fromUri(data.toString(), mimeType);
+		}
+		else {
+			throw new IllegalArgumentException("Unsupported media data type: " + data.getClass());
+		}
+
+		if (videoFps != null && "video".equals(media.getMimeType().getType())) {
+			return part.toBuilder().videoMetadata(VideoMetadata.builder().fps(videoFps)).build();
+		}
+
+		return part;
 	}
 
 	// Helper methods for JSON/Map conversion
@@ -780,8 +792,8 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 
 		// Create message contents
 		return new GeminiRequest(toGeminiContent(
-				prompt.getInstructions().stream().filter(m -> m.getMessageType() != MessageType.SYSTEM).toList()),
-				modelName, config);
+				prompt.getInstructions().stream().filter(m -> m.getMessageType() != MessageType.SYSTEM).toList(),
+				requestOptions.getVideoFps()), modelName, config);
 	}
 
 	// Helper methods for mapping safety settings enums
@@ -878,11 +890,15 @@ public class GoogleGenAiChatModel implements ChatModel, DisposableBean {
 	}
 
 	private List<Content> toGeminiContent(List<Message> instructions) {
+		return toGeminiContent(instructions, null);
+	}
+
+	private List<Content> toGeminiContent(List<Message> instructions, @Nullable Double videoFps) {
 
 		List<Content> contents = instructions.stream()
 			.map(message -> Content.builder()
 				.role(toGeminiMessageType(message.getMessageType()).getValue())
-				.parts(messageToGeminiParts(message))
+				.parts(messageToGeminiParts(message, videoFps))
 				.build())
 			.toList();
 

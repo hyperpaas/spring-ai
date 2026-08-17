@@ -115,6 +115,53 @@ public class CreateGeminiRequestTests {
 	}
 
 	@Test
+	public void createRequestWithVideoFpsAppliesToAllVideoMedia() {
+		var userMessage = UserMessage.builder()
+			.text("Analyze the media")
+			.media(List.of(
+					Media.builder()
+						.mimeType(Media.Format.VIDEO_MP4)
+						.data(URI.create("https://example.com/video.mp4"))
+						.build(),
+					Media.builder().mimeType(Media.Format.VIDEO_WEBM).data(new byte[] { 1, 2, 3 }).build(),
+					Media.builder()
+						.mimeType(MimeTypeUtils.IMAGE_PNG)
+						.data(URI.create("https://example.com/image.png"))
+						.build()))
+			.build();
+
+		var client = GoogleGenAiChatModel.builder().genAiClient(this.genAiClient).build();
+		GeminiRequest request = client.createGeminiRequest(new Prompt(List.of(userMessage),
+				GoogleGenAiChatOptions.builder().model("DEFAULT_MODEL").videoFps(5.0).build()));
+
+		List<Part> parts = request.contents().get(0).parts().orElseThrow();
+		assertThat(parts).hasSize(4);
+		assertThat(parts.get(1).videoMetadata())
+			.hasValueSatisfying(metadata -> assertThat(metadata.fps()).contains(5.0));
+		assertThat(parts.get(2).videoMetadata())
+			.hasValueSatisfying(metadata -> assertThat(metadata.fps()).contains(5.0));
+		assertThat(parts.get(3).videoMetadata()).isEmpty();
+	}
+
+	@Test
+	public void createRequestWithoutVideoFpsOmitsVideoMetadata() {
+		var userMessage = UserMessage.builder()
+			.text("Analyze the video")
+			.media(Media.builder()
+				.mimeType(Media.Format.VIDEO_MP4)
+				.data(URI.create("https://example.com/video.mp4"))
+				.build())
+			.build();
+
+		var client = GoogleGenAiChatModel.builder().genAiClient(this.genAiClient).build();
+		GeminiRequest request = client.createGeminiRequest(
+				new Prompt(List.of(userMessage), GoogleGenAiChatOptions.builder().model("DEFAULT_MODEL").build()));
+
+		List<Part> parts = request.contents().get(0).parts().orElseThrow();
+		assertThat(parts.get(1).videoMetadata()).isEmpty();
+	}
+
+	@Test
 	public void promptOptionsTools() {
 
 		final String TOOL_FUNCTION_NAME = "CurrentWeather";

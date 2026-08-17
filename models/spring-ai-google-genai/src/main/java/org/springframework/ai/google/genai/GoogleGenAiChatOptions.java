@@ -34,6 +34,7 @@ import org.springframework.ai.model.tool.DefaultToolCallingChatOptions;
 import org.springframework.ai.model.tool.StructuredOutputChatOptions;
 import org.springframework.ai.model.tool.ToolCallingChatOptions;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.util.Assert;
 
 /**
  * Options for the Google GenAI Chat API.
@@ -198,6 +199,12 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 	 * Optional. The service tier to use for the request.
 	 */
 	private final @Nullable GoogleGenAiServiceTier serviceTier;
+
+	/**
+	 * Optional. The frame rate used to sample all video media in the request. The
+	 * valid range is (0.0, 24.0].
+	 */
+	private final @Nullable Double videoFps;
 	// @formatter:on
 
 	protected GoogleGenAiChatOptions(@Nullable String model, @Nullable Double frequencyPenalty,
@@ -211,7 +218,7 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 			@Nullable Integer autoCacheThreshold, @Nullable Duration autoCacheTtl,
 			@Nullable Boolean googleSearchRetrieval, @Nullable Boolean includeServerSideToolInvocations,
 			@Nullable List<GoogleGenAiSafetySetting> safetySettings, @Nullable Map<String, String> labels,
-			@Nullable GoogleGenAiServiceTier serviceTier) {
+			@Nullable GoogleGenAiServiceTier serviceTier, @Nullable Double videoFps) {
 		this.model = model != null ? model : ChatModel.GEMINI_2_5_FLASH.getValue();
 		this.frequencyPenalty = frequencyPenalty;
 		this.maxOutputTokens = maxOutputTokens;
@@ -238,6 +245,7 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 		this.safetySettings = (safetySettings != null ? List.copyOf(safetySettings) : null);
 		this.labels = (labels != null ? Map.copyOf(labels) : null);
 		this.serviceTier = serviceTier;
+		this.videoFps = videoFps;
 	}
 
 	public static Builder builder() {
@@ -360,6 +368,13 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 		return this.serviceTier;
 	}
 
+	/**
+	 * @since 2.0.0
+	 */
+	public @Nullable Double getVideoFps() {
+		return this.videoFps;
+	}
+
 	@Override
 	public @Nullable Map<String, Object> getToolContext() {
 		return this.toolContext;
@@ -394,7 +409,7 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 				&& Objects.equals(this.toolCallbacks, that.toolCallbacks)
 				&& Objects.equals(this.safetySettings, that.safetySettings)
 				&& Objects.equals(this.toolContext, that.toolContext) && Objects.equals(this.labels, that.labels)
-				&& Objects.equals(this.serviceTier, that.serviceTier);
+				&& Objects.equals(this.serviceTier, that.serviceTier) && Objects.equals(this.videoFps, that.videoFps);
 	}
 
 	@Override
@@ -403,7 +418,7 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 				this.frequencyPenalty, this.presencePenalty, this.thinkingBudget, this.includeThoughts,
 				this.thinkingLevel, this.maxOutputTokens, this.model, this.responseMimeType, this.responseSchema,
 				this.toolCallbacks, this.googleSearchRetrieval, this.includeServerSideToolInvocations,
-				this.safetySettings, this.toolContext, this.labels, this.serviceTier);
+				this.safetySettings, this.toolContext, this.labels, this.serviceTier, this.videoFps);
 	}
 
 	@Override
@@ -439,6 +454,7 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 			.safetySettings(this.safetySettings)
 			.labels(this.labels)
 			.serviceTier(this.serviceTier)
+			.videoFps(this.videoFps)
 			.responseMimeType(this.responseMimeType);
 	}
 
@@ -490,6 +506,8 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 		protected @Nullable Map<String, String> labels;
 
 		protected @Nullable GoogleGenAiServiceTier serviceTier;
+
+		protected @Nullable Double videoFps;
 
 		public B candidateCount(@Nullable Integer candidateCount) {
 			this.candidateCount = candidateCount;
@@ -598,6 +616,21 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 			return self();
 		}
 
+		/**
+		 * Sets the frame rate used to sample all video media in the request.
+		 * @param videoFps the video frame rate, in the range (0.0, 24.0]
+		 * @return the builder instance
+		 * @since 2.0.0
+		 */
+		public B videoFps(@Nullable Double videoFps) {
+			if (videoFps != null) {
+				Assert.isTrue(videoFps > 0.0 && videoFps <= 24.0,
+						"videoFps must be greater than 0.0 and less than or equal to 24.0");
+			}
+			this.videoFps = videoFps;
+			return self();
+		}
+
 		public B combineWith(ChatOptions.Builder<?> other) {
 			super.combineWith(other);
 			if (other instanceof AbstractBuilder<?> that) {
@@ -663,6 +696,9 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 				if (that.serviceTier != null) {
 					this.serviceTier = that.serviceTier;
 				}
+				if (that.videoFps != null) {
+					this.videoFps = that.videoFps;
+				}
 			}
 			return self();
 		}
@@ -674,7 +710,8 @@ public class GoogleGenAiChatOptions implements ToolCallingChatOptions, Structure
 					this.candidateCount, this.responseMimeType, this.responseSchema, this.thinkingBudget,
 					this.includeThoughts, this.thinkingLevel, this.includeExtendedUsageMetadata, this.cachedContentName,
 					this.useCachedContent, this.autoCacheThreshold, this.autoCacheTtl, this.googleSearchRetrieval,
-					this.includeServerSideToolInvocations, this.safetySettings, this.labels, this.serviceTier);
+					this.includeServerSideToolInvocations, this.safetySettings, this.labels, this.serviceTier,
+					this.videoFps);
 		}
 
 	}

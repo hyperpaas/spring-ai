@@ -28,6 +28,7 @@ import org.springframework.ai.google.genai.common.GoogleGenAiThinkingLevel;
 import org.springframework.ai.test.options.AbstractChatOptionsTests;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Test for GoogleGenAiChatOptions
@@ -241,6 +242,47 @@ public class GoogleGenAiChatOptionsTest extends AbstractChatOptionsTests<GoogleG
 		assertThat(options1).isEqualTo(options2);
 		assertThat(options1.hashCode()).isEqualTo(options2.hashCode());
 		assertThat(options1).isNotEqualTo(options3);
+	}
+
+	@Test
+	public void testVideoFpsWithBuilder() {
+		GoogleGenAiChatOptions options = GoogleGenAiChatOptions.builder().videoFps(5.0).build();
+
+		assertThat(options.getVideoFps()).isEqualTo(5.0);
+	}
+
+	@Test
+	public void testEqualsAndHashCodeWithVideoFps() {
+		GoogleGenAiChatOptions options1 = GoogleGenAiChatOptions.builder().videoFps(5.0).build();
+		GoogleGenAiChatOptions options2 = GoogleGenAiChatOptions.builder().videoFps(5.0).build();
+		GoogleGenAiChatOptions options3 = GoogleGenAiChatOptions.builder().videoFps(10.0).build();
+
+		assertThat(options1).isEqualTo(options2);
+		assertThat(options1.hashCode()).isEqualTo(options2.hashCode());
+		assertThat(options1).isNotEqualTo(options3);
+	}
+
+	@Test
+	public void testVideoFpsValidation() {
+		assertThatThrownBy(() -> GoogleGenAiChatOptions.builder().videoFps(0.0))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("videoFps");
+		assertThatThrownBy(() -> GoogleGenAiChatOptions.builder().videoFps(-1.0))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("videoFps");
+		assertThatThrownBy(() -> GoogleGenAiChatOptions.builder().videoFps(24.1))
+			.isInstanceOf(IllegalArgumentException.class)
+			.hasMessageContaining("videoFps");
+	}
+
+	@Test
+	public void testCombineWithVideoFps() {
+		GoogleGenAiChatOptions base = GoogleGenAiChatOptions.builder().videoFps(2.0).build();
+		GoogleGenAiChatOptions override = GoogleGenAiChatOptions.builder().videoFps(5.0).build();
+
+		GoogleGenAiChatOptions merged = base.mutate().combineWith(override.mutate()).build();
+
+		assertThat(merged.getVideoFps()).isEqualTo(5.0);
 	}
 
 	@Test
